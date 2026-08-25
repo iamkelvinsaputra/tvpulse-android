@@ -4,12 +4,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -57,54 +59,81 @@ fun HomeScreen(
         mutableStateOf(uiState is HomeUiState.Error)
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        ScreenHeader(
-            title = "TVPulse",
-            actions = {
-                TextButton(onClick = onSearchClick) { Text("Search") }
-                TextButton(onClick = onFavoritesClick) { Text("Favorites") }
-            },
-        )
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            ScreenHeader(
+                title = "TVPulse",
+                actions = {
+                    TextButton(onClick = onSearchClick) {
+                        Text("Search")
+                    }
 
-        when (uiState) {
-            HomeUiState.Loading -> ShowListShimmer(modifier = Modifier.fillMaxSize())
-
-            HomeUiState.Empty -> EmptyHome(onRetry = onRetry)
-
-            is HomeUiState.Error -> {
-                EmptyHome(onRetry = onRetry)
-                if (showErrorDialog) {
-                    ErrorDialog(
-                        message = uiState.message,
-                        onRetry = {
-                            showErrorDialog = false
-                            onRetry()
-                        },
-                        onDismiss = { showErrorDialog = false },
+                    TextButton(onClick = onFavoritesClick) {
+                        Text("Favorites")
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding),
+        ) {
+            when (uiState) {
+                HomeUiState.Loading -> {
+                    ShowListShimmer(
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
-            }
 
-            is HomeUiState.Success -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    item {
-                        Text(
-                            text = "Top 30 shows",
-                            style = MaterialTheme.typography.headlineSmall,
+                HomeUiState.Empty -> {
+                    EmptyHome(onRetry = onRetry)
+                }
+
+                is HomeUiState.Error -> {
+                    EmptyHome(onRetry = onRetry)
+
+                    if (showErrorDialog) {
+                        ErrorDialog(
+                            message = uiState.message,
+                            onRetry = {
+                                showErrorDialog = false
+                                onRetry()
+                            },
+                            onDismiss = {
+                                showErrorDialog = false
+                            },
                         )
                     }
-                    items(
-                        items = uiState.shows,
-                        key = { it.id },
-                    ) { show ->
-                        ShowCard(
-                            show = show,
-                            onClick = { onShowClick(show.id) },
-                        )
+                }
+
+                is HomeUiState.Success -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        item {
+                            Text(
+                                text = "Top 30 shows",
+                                style = MaterialTheme.typography.headlineSmall,
+                            )
+                        }
+
+                        items(
+                            items = uiState.shows,
+                            key = { it.id },
+                        ) { show ->
+                            ShowCard(
+                                show = show,
+                                onClick = {
+                                    onShowClick(show.id)
+                                },
+                            )
+                        }
                     }
                 }
             }

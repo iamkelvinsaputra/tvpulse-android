@@ -4,12 +4,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -58,69 +60,91 @@ fun SearchScreen(
         mutableStateOf(uiState is SearchUiState.Error)
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        ScreenHeader(title = "Search", onBack = onBack)
-
-        OutlinedTextField(
-            value = query,
-            onValueChange = onQueryChange,
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            ScreenHeader(
+                title = "Search",
+                onBack = onBack,
+            )
+        },
+    ) { innerPadding ->
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            singleLine = true,
-            label = { Text("Show title") },
-            placeholder = { Text("e.g. The Bear") },
-        )
+                .fillMaxSize()
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding),
+        ) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                singleLine = true,
+                label = { Text("Show title") },
+                placeholder = { Text("e.g. The Bear") },
+            )
 
-        when (uiState) {
-            is SearchUiState.Loading -> ShowListShimmer(modifier = Modifier.fillMaxSize())
-
-            is SearchUiState.Empty -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(uiState.message)
-                }
-            }
-
-            is SearchUiState.Error -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("Search failed.")
-                }
-                if (showErrorDialog) {
-                    ErrorDialog(
-                        message = uiState.message,
-                        onRetry = {
-                            showErrorDialog = false
-                            onRetry()
-                        },
-                        onDismiss = { showErrorDialog = false },
+            when (uiState) {
+                is SearchUiState.Loading -> {
+                    ShowListShimmer(
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
-            }
 
-            is SearchUiState.Success -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(
-                        items = uiState.shows,
-                        key = { it.id },
-                    ) { show ->
-                        ShowCard(
-                            show = show,
-                            onClick = { onShowClick(show.id) },
+                is SearchUiState.Empty -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(uiState.message)
+                    }
+                }
+
+                is SearchUiState.Error -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("Search failed.")
+                    }
+
+                    if (showErrorDialog) {
+                        ErrorDialog(
+                            message = uiState.message,
+                            onRetry = {
+                                showErrorDialog = false
+                                onRetry()
+                            },
+                            onDismiss = {
+                                showErrorDialog = false
+                            },
                         )
+                    }
+                }
+
+                is SearchUiState.Success -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(
+                            items = uiState.shows,
+                            key = { it.id },
+                        ) { show ->
+                            ShowCard(
+                                show = show,
+                                onClick = {
+                                    onShowClick(show.id)
+                                },
+                            )
+                        }
                     }
                 }
             }
