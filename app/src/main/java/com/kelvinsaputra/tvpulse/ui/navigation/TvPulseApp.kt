@@ -12,16 +12,16 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.kelvinsaputra.tvpulse.ui.home.HomeRoute
+import com.kelvinsaputra.tvpulse.ui.search.SearchRoute
 
 @Composable
-fun TvPulseApp(
-    onExit: () -> Unit,
-) {
+fun TvPulseApp(onExit: () -> Unit) {
     val backStack = rememberNavBackStack(HomeDestination)
 
     fun navigateBack() {
         if (backStack.size > 1) backStack.removeLastOrNull() else onExit()
     }
+    fun navigateToDetail(showId: Long) { backStack.add(DetailDestination(showId)) }
 
     NavDisplay(
         backStack = backStack,
@@ -35,10 +35,12 @@ fun TvPulseApp(
                 HomeRoute(
                     onSearchClick = { backStack.add(SearchDestination) },
                     onFavoritesClick = { backStack.add(FavoritesDestination) },
-                    onShowClick = { showId -> backStack.add(DetailDestination(showId)) },
+                    onShowClick = ::navigateToDetail,
                 )
             }
-            entry<SearchDestination> { PlaceholderScreen("Search") }
+            entry<SearchDestination> {
+                SearchRoute(onBack = ::navigateBack, onShowClick = ::navigateToDetail)
+            }
             entry<FavoritesDestination> { PlaceholderScreen("Favorites") }
             entry<DetailDestination> { destination -> PlaceholderScreen("Detail: ${destination.showId}") }
         },
