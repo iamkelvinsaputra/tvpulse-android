@@ -50,6 +50,21 @@ class DefaultTvShowRepositoryTest {
     }
 
     @Test
+    fun `search is capped at ten results`() = runTest {
+        val api = FakeApi(
+            searchResults = (1L..15L).map { id ->
+                SearchShowDto(show = TvShowDto(id = id, name = "Show $id"))
+            },
+        )
+        val repository = createRepository(api)
+
+        val result = repository.searchShows("show")
+
+        assertEquals(10, result.size)
+        assertEquals(10L, result.last().id)
+    }
+
+    @Test
     fun `detail maps requested show`() = runTest {
         val api = FakeApi(detail = TvShowDto(id = 99, name = "Detail"))
         val repository = createRepository(api)
@@ -106,7 +121,6 @@ private class FakeSearchResultDao : SearchResultDao {
     override fun observeShows(query: String, limit: Int): Flow<List<CachedShowEntity>> =
         flowOf(emptyList())
 
-    override suspend fun count(query: String): Int = 0
     override suspend fun upsertCachedShows(shows: List<CachedShowEntity>) = Unit
     override suspend fun insertAll(entries: List<SearchResultEntity>) = Unit
     override suspend fun clearQuery(query: String) = Unit

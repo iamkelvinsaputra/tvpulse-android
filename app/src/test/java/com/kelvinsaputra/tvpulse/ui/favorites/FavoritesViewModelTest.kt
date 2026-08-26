@@ -38,4 +38,51 @@ class FavoritesViewModelTest {
 
         assertEquals(9L, viewModel.uiState.value.shows.single().id)
     }
+    @Test
+    fun `favorites keep cached data visible while metadata refreshes`() = runTest {
+        val repository = FakeTvShowRepository().apply {
+            favorites.value = listOf(sampleShow(id = 9, name = "Old Name"))
+            refreshFavorites = { showIds ->
+                assertEquals(listOf(9L), showIds)
+                favorites.value = listOf(sampleShow(id = 9, name = "New Name"))
+            }
+        }
+        val viewModel = FavoritesViewModel(
+            observeFavoritesUseCase = ObserveFavoritesUseCase(repository),
+            canLoadMoreFavoritesUseCase = CanLoadMoreFavoritesUseCase(repository),
+            refreshFavoritesUseCase = RefreshFavoritesUseCase(repository),
+            setFavoriteUseCase = SetFavoriteUseCase(repository),
+        )
+
+        runCurrent()
+
+        assertEquals("New Name", viewModel.uiState.value.shows.single().name)
+    }
+
+    @Test
+    fun `loading the next favorites page syncs only the newly revealed page`() = runTest {
+        val syncedPages = mutableListOf<List<Long>>()
+        val repository = FakeTvShowRepository().apply {
+            favorites.value = (1L..15L).map { id -> sampleShow(id = id) }
+            refreshFavorites = { showIds ->
+                syncedPages += showIds
+            }
+        }
+        val viewModel = FavoritesViewModel(
+            observeFavoritesUseCase = ObserveFavoritesUseCase(repository),
+            canLoadMoreFavoritesUseCase = CanLoadMoreFavoritesUseCase(repository),
+            refreshFavoritesUseCase = RefreshFavoritesUseCase(repository),
+            setFavoriteUseCase = SetFavoriteUseCase(repository),
+        )
+
+        runCurrent()
+        assertEquals((1L..10L).toList(), syncedPages.single())
+
+        viewModel.loadMore()
+        runCurrent()
+
+        assertEquals((11L..15L).toList(), syncedPages.last())
+        assertEquals(15, viewModel.uiState.value.shows.size)
+    }
+
 }

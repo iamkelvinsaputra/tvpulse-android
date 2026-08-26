@@ -76,7 +76,6 @@ fun HomeRoute(
         onHomeRetry = homeViewModel::retry,
         onHomeLoadMore = homeViewModel::loadMore,
         onSearchRetry = searchViewModel::retry,
-        onSearchLoadMore = searchViewModel::loadMore,
     )
 }
 
@@ -91,7 +90,6 @@ fun HomeScreen(
     onHomeRetry: () -> Unit,
     onHomeLoadMore: () -> Unit,
     onSearchRetry: () -> Unit,
-    onSearchLoadMore: () -> Unit,
 ) {
     val normalizedQuery = query.trim()
     val activeError = if (normalizedQuery.isBlank()) {
@@ -172,7 +170,6 @@ fun HomeScreen(
                         uiState = searchUiState,
                         onShowClick = onShowClick,
                         onRetry = onSearchRetry,
-                        onLoadMore = onSearchLoadMore,
                     )
                 }
             }
@@ -247,7 +244,6 @@ private fun SearchContent(
     uiState: SearchUiState,
     onShowClick: (Long) -> Unit,
     onRetry: () -> Unit,
-    onLoadMore: () -> Unit,
 ) {
     if (uiState.query != query) {
         LoadingState()
@@ -284,10 +280,10 @@ private fun SearchContent(
                     uiState.shows.size,
                 ),
                 shows = uiState.shows,
-                isLoadingMore = uiState.isLoadingMore,
-                canLoadMore = uiState.canLoadMore,
+                isLoadingMore = false,
+                canLoadMore = false,
                 onShowClick = onShowClick,
-                onLoadMore = onLoadMore,
+                onLoadMore = {},
             )
         }
     }

@@ -23,9 +23,6 @@ interface SearchResultDao {
     )
     fun observeShows(query: String, limit: Int): Flow<List<CachedShowEntity>>
 
-    @Query("SELECT COUNT(*) FROM search_results WHERE query = :query")
-    suspend fun count(query: String): Int
-
     @Upsert
     suspend fun upsertCachedShows(shows: List<CachedShowEntity>)
 

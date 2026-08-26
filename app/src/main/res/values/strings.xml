@@ -10,7 +10,7 @@
     <string name="search_placeholder">Cari Serial TV (misal: horror)…</string>
     <string name="clear_search">Hapus pencarian</string>
     <string name="popular_shows_count">DAFTAR ACARA POPULER (%1$d Film)</string>
-    <string name="search_results_count">HASIL PENCARIAN (%1$d Film)</string>
+    <string name="search_results_count">HASIL PENCARIAN (%1$d / 10 Film)</string>
     <string name="search_not_found">Pencarian Tidak Ditemukan</string>
     <string name="search_not_found_message">Hups! Tidak ditemukan apa pun.\nCoba kata kunci lain atau periksa ejaan.</string>
     <string name="home_empty">Tidak ada acara TV yang dapat ditampilkan.</string>
@@ -32,6 +32,7 @@
     <string name="status_ended">Selesai</string>
     <string name="status_in_development">Dalam Pengembangan</string>
     <string name="poster_content_description">Poster %1$s</string>
+    <string name="retry_image">Coba muat gambar lagi</string>
 
     <string name="connection_error_title">Gangguan Koneksi</string>
     <string name="connection_error_message">Terjadi kesalahan saat menghubungi server kami. Pastikan perangkat Anda terhubung ke internet dan coba lagi.</string>

@@ -53,9 +53,10 @@ class HomeViewModel @Inject constructor(
             _uiState.update { it.copy(isLoadingMore = true, syncError = null) }
 
             try {
-                val hasMore = loadMoreHomeShowsUseCase(visibleLimit.value)
+                val targetCount = visibleLimit.value + PAGE_SIZE
+                val hasMore = loadMoreHomeShowsUseCase(targetCount)
                 if (hasMore) {
-                    visibleLimit.value += PAGE_SIZE
+                    visibleLimit.value = targetCount
                 }
                 _uiState.update {
                     it.copy(
@@ -140,6 +141,6 @@ class HomeViewModel @Inject constructor(
     }
 
     private companion object {
-        const val PAGE_SIZE = 10
+        const val PAGE_SIZE = 30
     }
 }

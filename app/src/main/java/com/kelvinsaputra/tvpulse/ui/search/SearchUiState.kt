@@ -9,8 +9,6 @@ data class SearchUiState(
     val hasSearched: Boolean = false,
     val isInitialLoading: Boolean = false,
     val isSyncing: Boolean = false,
-    val isLoadingMore: Boolean = false,
-    val canLoadMore: Boolean = false,
     val blockingError: UiError? = null,
     val syncError: UiError? = null,
 )

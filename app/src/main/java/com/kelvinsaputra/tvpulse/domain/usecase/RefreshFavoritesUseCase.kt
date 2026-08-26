@@ -6,7 +6,7 @@ import javax.inject.Inject
 class RefreshFavoritesUseCase @Inject constructor(
     private val repository: TvShowRepository,
 ) {
-    suspend operator fun invoke() {
-        repository.refreshFavorites()
+    suspend operator fun invoke(showIds: List<Long>) {
+        repository.refreshFavorites(showIds)
     }
 }

@@ -12,7 +12,6 @@ class FakeTvShowRepository : TvShowRepository {
     var topShowsError: Throwable? = null
     var search: suspend (String) -> List<TvShow> = { emptyList() }
     var detail: suspend (Long) -> TvShow = { sampleShow(it) }
-    var refreshFavoritesError: Throwable? = null
 
     val homeCache = MutableStateFlow<List<TvShow>>(emptyList())
     var homeCacheKnown: Boolean = false
@@ -35,8 +34,8 @@ class FakeTvShowRepository : TvShowRepository {
         return topShows
     }
 
-    override suspend fun loadMoreHomeShows(visibleCount: Int): Boolean =
-        homeCache.value.size > visibleCount
+    override suspend fun loadMoreHomeShows(targetCount: Int): Boolean =
+        homeCache.value.size >= targetCount
 
     override fun observeSearchShows(query: String, limit: Int): Flow<List<TvShow>> =
         searchCache(query).map { it.take(limit) }
@@ -50,11 +49,6 @@ class FakeTvShowRepository : TvShowRepository {
         knownSearchCaches += normalizeQuery(query)
         return result
     }
-
-    override suspend fun canLoadMoreSearchShows(
-        query: String,
-        visibleCount: Int,
-    ): Boolean = searchCache(query).value.size > visibleCount
 
     override fun observeShowDetail(showId: Long): Flow<TvShow?> =
         combine(
@@ -73,11 +67,13 @@ class FakeTvShowRepository : TvShowRepository {
     override fun observeFavorites(limit: Int): Flow<List<TvShow>> =
         favorites.map { it.take(limit) }
 
+    var refreshFavorites: suspend (List<Long>) -> Unit = {}
+
     override suspend fun canLoadMoreFavorites(visibleCount: Int): Boolean =
         favorites.value.size > visibleCount
 
-    override suspend fun refreshFavorites() {
-        refreshFavoritesError?.let { throw it }
+    override suspend fun refreshFavorites(showIds: List<Long>) {
+        refreshFavorites.invoke(showIds)
     }
 
     override fun observeIsFavorite(showId: Long): Flow<Boolean> =

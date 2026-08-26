@@ -1,8 +1,6 @@
 package com.kelvinsaputra.tvpulse.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -24,7 +22,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.kelvinsaputra.tvpulse.R
 import com.kelvinsaputra.tvpulse.domain.model.TvShow
 import java.util.Locale
@@ -149,18 +146,10 @@ private fun PosterImage(
     contentDescription: String,
     modifier: Modifier,
 ) {
-    if (imageUrl != null) {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = contentDescription,
-            contentScale = ContentScale.Crop,
-            modifier = modifier,
-        )
-    } else {
-        Box(
-            modifier = modifier.background(
-                MaterialTheme.colorScheme.surfaceVariant,
-            ),
-        )
-    }
+    RetryableNetworkImage(
+        imageUrl = imageUrl,
+        contentDescription = contentDescription,
+        contentScale = ContentScale.Crop,
+        modifier = modifier,
+    )
 }

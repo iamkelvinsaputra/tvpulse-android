@@ -141,6 +141,7 @@ private fun FavoritesContent(
         uiState.shows.size,
         uiState.canLoadMore,
         uiState.isLoadingMore,
+        uiState.isSyncing,
     ) {
         snapshotFlow {
             listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
@@ -150,6 +151,7 @@ private fun FavoritesContent(
                 if (
                     uiState.canLoadMore &&
                     !uiState.isLoadingMore &&
+                    !uiState.isSyncing &&
                     uiState.shows.isNotEmpty() &&
                     lastVisibleIndex >= uiState.shows.lastIndex - LOAD_MORE_THRESHOLD
                 ) {

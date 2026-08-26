@@ -1,5 +1,9 @@
 package com.kelvinsaputra.tvpulse.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -44,6 +48,33 @@ fun TvPulseApp(
     NavDisplay(
         backStack = backStack,
         onBack = ::navigateBack,
+        transitionSpec = {
+            slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec = tween(NAV_ANIMATION_MILLIS),
+            ) togetherWith slideOutHorizontally(
+                targetOffsetX = { -it },
+                animationSpec = tween(NAV_ANIMATION_MILLIS),
+            )
+        },
+        popTransitionSpec = {
+            slideInHorizontally(
+                initialOffsetX = { -it },
+                animationSpec = tween(NAV_ANIMATION_MILLIS),
+            ) togetherWith slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(NAV_ANIMATION_MILLIS),
+            )
+        },
+        predictivePopTransitionSpec = {
+            slideInHorizontally(
+                initialOffsetX = { -it },
+                animationSpec = tween(NAV_ANIMATION_MILLIS),
+            ) togetherWith slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(NAV_ANIMATION_MILLIS),
+            )
+        },
         entryDecorators = listOf(
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),
@@ -76,3 +107,5 @@ fun TvPulseApp(
         },
     )
 }
+
+private const val NAV_ANIMATION_MILLIS = 250

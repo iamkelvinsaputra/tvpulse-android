@@ -1,7 +1,6 @@
 package com.kelvinsaputra.tvpulse.ui.detail
 
 import android.text.Html
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +10,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
@@ -42,10 +42,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
 import com.kelvinsaputra.tvpulse.R
 import com.kelvinsaputra.tvpulse.domain.model.TvShow
 import com.kelvinsaputra.tvpulse.ui.components.ErrorDialog
+import com.kelvinsaputra.tvpulse.ui.components.RetryableNetworkImage
 import com.kelvinsaputra.tvpulse.ui.components.LanguageSwitcher
 import com.kelvinsaputra.tvpulse.ui.components.SyncStatusBanner
 import com.kelvinsaputra.tvpulse.ui.components.UiError
@@ -225,26 +225,18 @@ private fun DetailContent(
 
         Spacer(Modifier.height(12.dp))
 
-        if (show.imageUrl != null) {
-            AsyncImage(
-                model = show.imageUrl,
-                contentDescription = stringResource(
-                    R.string.poster_content_description,
-                    show.name,
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-                contentScale = ContentScale.FillWidth,
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-            )
-        }
+        RetryableNetworkImage(
+            imageUrl = show.imageUrl,
+            contentDescription = stringResource(
+                R.string.poster_content_description,
+                show.name,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 180.dp)
+                .wrapContentHeight(),
+            contentScale = ContentScale.FillWidth,
+        )
 
         Spacer(Modifier.height(10.dp))
 

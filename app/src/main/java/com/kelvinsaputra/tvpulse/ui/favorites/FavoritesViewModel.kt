@@ -48,11 +48,13 @@ class FavoritesViewModel @Inject constructor(
         if (_uiState.value.isSyncing) return
 
         viewModelScope.launch {
-            val cachedShows = observeFavoritesUseCase(PAGE_SIZE).first()
-            val canLoadMore = canLoadMoreFavoritesUseCase(PAGE_SIZE)
-            _uiState.update {
-                it.copy(
-                    shows = cachedShows.ifEmpty { it.shows },
+            val currentLimit = visibleLimit.value
+            val cachedShows = observeFavoritesUseCase(currentLimit).first()
+            val canLoadMore = canLoadMoreFavoritesUseCase(currentLimit)
+
+            _uiState.update { state ->
+                state.copy(
+                    shows = cachedShows.ifEmpty { state.shows },
                     isInitialLoading = false,
                     isSyncing = cachedShows.isNotEmpty(),
                     canLoadMore = canLoadMore,
@@ -60,26 +62,13 @@ class FavoritesViewModel @Inject constructor(
                 )
             }
 
+            // Favorite membership is local. If Room has no favorites, there is
+            // nothing to refresh from TVmaze.
             if (cachedShows.isEmpty()) return@launch
 
-            try {
-                refreshFavoritesUseCase()
-                _uiState.update {
-                    it.copy(
-                        isSyncing = false,
-                        syncError = null,
-                    )
-                }
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (exception: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isSyncing = false,
-                        syncError = exception.toUiError(),
-                    )
-                }
-            }
+            syncFavoritePage(
+                showIds = cachedShows.map(TvShow::id),
+            )
         }
     }
 
@@ -88,6 +77,7 @@ class FavoritesViewModel @Inject constructor(
         if (
             state.shows.isEmpty() ||
             state.isLoadingMore ||
+            state.isSyncing ||
             !state.canLoadMore
         ) {
             return
@@ -95,16 +85,42 @@ class FavoritesViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
+
             val currentLimit = visibleLimit.value
-            val hasMore = canLoadMoreFavoritesUseCase(currentLimit)
-            if (hasMore) {
-                visibleLimit.value = currentLimit + PAGE_SIZE
+            if (!canLoadMoreFavoritesUseCase(currentLimit)) {
+                _uiState.update {
+                    it.copy(
+                        isLoadingMore = false,
+                        canLoadMore = false,
+                    )
+                }
+                return@launch
             }
-            val canLoadMoreAfter = canLoadMoreFavoritesUseCase(visibleLimit.value)
+
+            val nextLimit = currentLimit + PAGE_SIZE
+            visibleLimit.value = nextLimit
+
+            // Reveal the next cached Room page immediately, then sync only the
+            // newly revealed favorites in the background.
+            val visibleShows = observeFavoritesUseCase(nextLimit).first()
+            val newPage = visibleShows
+                .drop(currentLimit)
+                .take(PAGE_SIZE)
+
+            val canLoadMoreAfter = canLoadMoreFavoritesUseCase(nextLimit)
             _uiState.update {
                 it.copy(
+                    shows = visibleShows,
                     isLoadingMore = false,
+                    isSyncing = newPage.isNotEmpty(),
                     canLoadMore = canLoadMoreAfter,
+                    syncError = null,
+                )
+            }
+
+            if (newPage.isNotEmpty()) {
+                syncFavoritePage(
+                    showIds = newPage.map(TvShow::id),
                 )
             }
         }
@@ -138,15 +154,38 @@ class FavoritesViewModel @Inject constructor(
         _actionError.value = null
     }
 
+    private suspend fun syncFavoritePage(showIds: List<Long>) {
+        try {
+            refreshFavoritesUseCase(showIds)
+            _uiState.update {
+                it.copy(
+                    isSyncing = false,
+                    syncError = null,
+                )
+            }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            _uiState.update {
+                it.copy(
+                    isSyncing = false,
+                    syncError = exception.toUiError(),
+                )
+            }
+        }
+    }
+
     private fun observeFavorites() {
         viewModelScope.launch {
             visibleLimit
                 .flatMapLatest(observeFavoritesUseCase::invoke)
                 .collect { shows ->
+                    val canLoadMore = canLoadMoreFavoritesUseCase(visibleLimit.value)
                     _uiState.update { state ->
                         state.copy(
                             shows = shows,
                             isInitialLoading = false,
+                            canLoadMore = canLoadMore,
                         )
                     }
                 }

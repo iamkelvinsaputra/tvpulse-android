@@ -1,6 +1,5 @@
 package com.kelvinsaputra.tvpulse.ui.search
 
-import com.kelvinsaputra.tvpulse.domain.usecase.CanLoadMoreSearchShowsUseCase
 import com.kelvinsaputra.tvpulse.domain.usecase.HasSearchCacheUseCase
 import com.kelvinsaputra.tvpulse.domain.usecase.ObserveSearchShowsUseCase
 import com.kelvinsaputra.tvpulse.domain.usecase.SearchShowsUseCase
@@ -59,6 +58,22 @@ class SearchViewModelTest {
     }
 
     @Test
+    fun `search exposes at most ten results`() = runTest {
+        val repository = FakeTvShowRepository().apply {
+            search = {
+                (1L..15L).map { id -> sampleShow(id = id, name = "Show $id") }
+            }
+        }
+        val viewModel = createViewModel(repository)
+
+        viewModel.onQueryChange("show")
+        advanceTimeBy(350)
+        runCurrent()
+
+        assertEquals(10, viewModel.uiState.value.shows.size)
+    }
+
+    @Test
     fun `new query cancels stale search`() = runTest {
         val completed = mutableListOf<String>()
         val repository = FakeTvShowRepository().apply {
@@ -90,6 +105,5 @@ class SearchViewModelTest {
         observeSearchShowsUseCase = ObserveSearchShowsUseCase(repository),
         hasSearchCacheUseCase = HasSearchCacheUseCase(repository),
         searchShowsUseCase = SearchShowsUseCase(repository),
-        canLoadMoreSearchShowsUseCase = CanLoadMoreSearchShowsUseCase(repository),
     )
 }

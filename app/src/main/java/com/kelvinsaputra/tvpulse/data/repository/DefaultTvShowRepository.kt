@@ -14,6 +14,7 @@ import com.kelvinsaputra.tvpulse.data.mapper.toFavoriteEntity
 import com.kelvinsaputra.tvpulse.data.remote.api.TvMazeApi
 import com.kelvinsaputra.tvpulse.domain.model.TvShow
 import com.kelvinsaputra.tvpulse.domain.repository.TvShowRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -58,29 +59,32 @@ class DefaultTvShowRepository @Inject constructor(
         return shows
     }
 
-    override suspend fun loadMoreHomeShows(visibleCount: Int): Boolean {
-        if (homeShowDao.count() > visibleCount) return true
+    override suspend fun loadMoreHomeShows(targetCount: Int): Boolean {
+        if (homeShowDao.count() >= targetCount) return true
 
-        val nextRemotePage = (homeShowDao.maxRemotePage() ?: -1) + 1
-        val shows = try {
-            api.getShows(page = nextRemotePage).map { it.toDomain() }
-        } catch (exception: HttpException) {
-            if (exception.code() == 404) return false
-            throw exception
+        while (homeShowDao.count() < targetCount) {
+            val nextRemotePage = (homeShowDao.maxRemotePage() ?: -1) + 1
+            val shows = try {
+                api.getShows(page = nextRemotePage).map { it.toDomain() }
+            } catch (exception: HttpException) {
+                if (exception.code() == 404) return false
+                throw exception
+            }
+            if (shows.isEmpty()) return false
+
+            val firstPosition = (homeShowDao.maxPosition() ?: -1) + 1
+            homeShowDao.append(
+                shows = shows.map { it.toCachedEntity() },
+                entries = shows.mapIndexed { index, show ->
+                    HomeShowEntity(
+                        showId = show.id,
+                        position = firstPosition + index,
+                        remotePage = nextRemotePage,
+                    )
+                },
+            )
         }
-        if (shows.isEmpty()) return false
 
-        val firstPosition = (homeShowDao.maxPosition() ?: -1) + 1
-        homeShowDao.append(
-            shows = shows.map { it.toCachedEntity() },
-            entries = shows.mapIndexed { index, show ->
-                HomeShowEntity(
-                    showId = show.id,
-                    position = firstPosition + index,
-                    remotePage = nextRemotePage,
-                )
-            },
-        )
         return true
     }
 
@@ -92,16 +96,17 @@ class DefaultTvShowRepository @Inject constructor(
         cacheMetadataDao.get(searchCacheKey(query)) != null
 
     override suspend fun searchShows(query: String): List<TvShow> {
-        val cacheKey = normalizeQuery(query)
+        val normalizedQuery = normalizeQuery(query)
         val shows = api.searchShows(query)
             .map { it.show.toDomain() }
+            .take(MAX_SEARCH_RESULTS)
 
         searchResultDao.replaceResults(
-            query = cacheKey,
+            query = normalizedQuery,
             shows = shows.map { it.toCachedEntity() },
             entries = shows.mapIndexed { index, show ->
                 SearchResultEntity(
-                    query = cacheKey,
+                    query = normalizedQuery,
                     showId = show.id,
                     position = index,
                 )
@@ -116,11 +121,6 @@ class DefaultTvShowRepository @Inject constructor(
         )
         return shows
     }
-
-    override suspend fun canLoadMoreSearchShows(
-        query: String,
-        visibleCount: Int,
-    ): Boolean = searchResultDao.count(normalizeQuery(query)) > visibleCount
 
     override fun observeShowDetail(showId: Long): Flow<TvShow?> =
         combine(
@@ -146,15 +146,31 @@ class DefaultTvShowRepository @Inject constructor(
     override suspend fun canLoadMoreFavorites(visibleCount: Int): Boolean =
         favoriteShowDao.count() > visibleCount
 
-    override suspend fun refreshFavorites() {
-        val favorites = favoriteShowDao.getAll()
-        if (favorites.isEmpty()) return
+    override suspend fun refreshFavorites(showIds: List<Long>) {
+        var firstFailure: Exception? = null
 
-        for (favorite in favorites) {
-            val show = api.getShow(favorite.id).toDomain()
-            cachedShowDao.upsert(show.toCachedEntity())
-            favoriteShowDao.upsert(show.toFavoriteEntity())
+        for (showId in showIds.distinct()) {
+            // Favorite membership is local state. A stale pagination snapshot must
+            // never resurrect a favorite that the user removed while syncing.
+            if (!favoriteShowDao.isFavorite(showId)) continue
+
+            try {
+                val show = api.getShow(showId).toDomain()
+                cachedShowDao.upsert(show.toCachedEntity())
+
+                if (favoriteShowDao.isFavorite(showId)) {
+                    favoriteShowDao.upsert(show.toFavoriteEntity())
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                // Refresh the remaining favorites even when one show fails.
+                // The local favorite membership is never deleted by sync.
+                if (firstFailure == null) firstFailure = exception
+            }
         }
+
+        firstFailure?.let { throw it }
     }
 
     override fun observeIsFavorite(showId: Long): Flow<Boolean> =
@@ -178,5 +194,6 @@ class DefaultTvShowRepository @Inject constructor(
     private companion object {
         const val HOME_CACHE_KEY = "home"
         const val SEARCH_CACHE_PREFIX = "search:"
+        const val MAX_SEARCH_RESULTS = 10
     }
 }

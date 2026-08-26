@@ -6,6 +6,6 @@ import javax.inject.Inject
 class LoadMoreHomeShowsUseCase @Inject constructor(
     private val repository: TvShowRepository,
 ) {
-    suspend operator fun invoke(visibleCount: Int): Boolean =
-        repository.loadMoreHomeShows(visibleCount)
+    suspend operator fun invoke(targetCount: Int): Boolean =
+        repository.loadMoreHomeShows(targetCount)
 }
