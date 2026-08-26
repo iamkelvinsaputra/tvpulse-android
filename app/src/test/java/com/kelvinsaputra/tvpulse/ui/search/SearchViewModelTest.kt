@@ -1,5 +1,8 @@
 package com.kelvinsaputra.tvpulse.ui.search
 
+import com.kelvinsaputra.tvpulse.domain.usecase.CanLoadMoreSearchShowsUseCase
+import com.kelvinsaputra.tvpulse.domain.usecase.HasSearchCacheUseCase
+import com.kelvinsaputra.tvpulse.domain.usecase.ObserveSearchShowsUseCase
 import com.kelvinsaputra.tvpulse.domain.usecase.SearchShowsUseCase
 import com.kelvinsaputra.tvpulse.testutil.FakeTvShowRepository
 import com.kelvinsaputra.tvpulse.testutil.MainDispatcherRule
@@ -11,6 +14,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -30,54 +34,28 @@ class SearchViewModelTest {
                 emptyList()
             }
         }
-        val viewModel = SearchViewModel(SearchShowsUseCase(repository))
+        val viewModel = createViewModel(repository)
 
         viewModel.onQueryChange("   ")
         runCurrent()
 
         assertEquals(0, callCount)
-        assertTrue(viewModel.uiState.value is SearchUiState.Empty)
+        assertFalse(viewModel.uiState.value.hasSearched)
     }
 
     @Test
-    fun `search exposes error state when request fails`() = runTest {
+    fun `search failure without cache becomes blocking error`() = runTest {
         val repository = FakeTvShowRepository().apply {
             search = { throw IllegalStateException("boom") }
         }
-        val viewModel = SearchViewModel(SearchShowsUseCase(repository))
+        val viewModel = createViewModel(repository)
 
         viewModel.onQueryChange("broken")
         advanceTimeBy(350)
         runCurrent()
 
-        assertTrue(viewModel.uiState.value is SearchUiState.Error)
-    }
-
-    @Test
-    fun `retry bypasses debounce and immediately refetches`() = runTest {
-        var callCount = 0
-        val repository = FakeTvShowRepository().apply {
-            search = {
-                callCount += 1
-                if (callCount == 1) {
-                    throw IllegalStateException("boom")
-                }
-                delay(1_000)
-                listOf(sampleShow())
-            }
-        }
-        val viewModel = SearchViewModel(SearchShowsUseCase(repository))
-
-        viewModel.onQueryChange("broken")
-        advanceTimeBy(350)
-        runCurrent()
-        assertTrue(viewModel.uiState.value is SearchUiState.Error)
-
-        viewModel.retry()
-        runCurrent()
-
-        assertEquals(2, callCount)
-        assertTrue(viewModel.uiState.value is SearchUiState.Loading)
+        assertNotNull(viewModel.uiState.value.blockingError)
+        assertTrue(viewModel.uiState.value.shows.isEmpty())
     }
 
     @Test
@@ -90,7 +68,7 @@ class SearchViewModelTest {
                 listOf(sampleShow(name = query))
             }
         }
-        val viewModel = SearchViewModel(SearchShowsUseCase(repository))
+        val viewModel = createViewModel(repository)
 
         viewModel.onQueryChange("old")
         advanceTimeBy(350)
@@ -104,7 +82,14 @@ class SearchViewModelTest {
 
         assertFalse("old" in completed)
         assertTrue("new" in completed)
-        val state = viewModel.uiState.value as SearchUiState.Success
-        assertEquals("new", state.query)
+        assertEquals("new", viewModel.uiState.value.query)
+        assertEquals("new", viewModel.uiState.value.shows.single().name)
     }
+
+    private fun createViewModel(repository: FakeTvShowRepository) = SearchViewModel(
+        observeSearchShowsUseCase = ObserveSearchShowsUseCase(repository),
+        hasSearchCacheUseCase = HasSearchCacheUseCase(repository),
+        searchShowsUseCase = SearchShowsUseCase(repository),
+        canLoadMoreSearchShowsUseCase = CanLoadMoreSearchShowsUseCase(repository),
+    )
 }

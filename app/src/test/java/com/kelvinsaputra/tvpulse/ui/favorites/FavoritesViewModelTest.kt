@@ -1,18 +1,16 @@
 package com.kelvinsaputra.tvpulse.ui.favorites
 
+import com.kelvinsaputra.tvpulse.domain.usecase.CanLoadMoreFavoritesUseCase
 import com.kelvinsaputra.tvpulse.domain.usecase.ObserveFavoritesUseCase
+import com.kelvinsaputra.tvpulse.domain.usecase.RefreshFavoritesUseCase
 import com.kelvinsaputra.tvpulse.domain.usecase.SetFavoriteUseCase
 import com.kelvinsaputra.tvpulse.testutil.FakeTvShowRepository
 import com.kelvinsaputra.tvpulse.testutil.MainDispatcherRule
 import com.kelvinsaputra.tvpulse.testutil.sampleShow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -23,26 +21,21 @@ class FavoritesViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun `favorites react to repository flow updates`() = runTest {
+    fun `favorites react to room backed repository flow`() = runTest {
         val repository = FakeTvShowRepository()
         val viewModel = FavoritesViewModel(
-            ObserveFavoritesUseCase(repository),
-            SetFavoriteUseCase(repository),
+            observeFavoritesUseCase = ObserveFavoritesUseCase(repository),
+            canLoadMoreFavoritesUseCase = CanLoadMoreFavoritesUseCase(repository),
+            refreshFavoritesUseCase = RefreshFavoritesUseCase(repository),
+            setFavoriteUseCase = SetFavoriteUseCase(repository),
         )
-        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            viewModel.uiState.collect()
-        }
 
         runCurrent()
-        assertEquals(FavoritesUiState.Empty, viewModel.uiState.value)
+        assertEquals(emptyList<Any>(), viewModel.uiState.value.shows)
 
         repository.favorites.value = listOf(sampleShow(id = 9))
         runCurrent()
 
-        val state = viewModel.uiState.value
-        assertTrue(state is FavoritesUiState.Success)
-        assertEquals(9L, (state as FavoritesUiState.Success).shows.single().id)
-
-        collectJob.cancel()
+        assertEquals(9L, viewModel.uiState.value.shows.single().id)
     }
 }

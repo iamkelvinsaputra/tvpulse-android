@@ -1,5 +1,6 @@
 package com.kelvinsaputra.tvpulse.data.mapper
 
+import com.kelvinsaputra.tvpulse.data.local.entity.CachedShowEntity
 import com.kelvinsaputra.tvpulse.data.local.entity.FavoriteShowEntity
 import com.kelvinsaputra.tvpulse.data.remote.dto.TvShowDto
 import com.kelvinsaputra.tvpulse.domain.model.TvShow
@@ -28,6 +29,39 @@ fun TvShowDto.toDomain(): TvShow = TvShow(
     status = status,
 )
 
+fun TvShow.toCachedEntity(
+    updatedAtEpochMillis: Long = System.currentTimeMillis(),
+): CachedShowEntity = CachedShowEntity(
+    id = id,
+    name = name,
+    imageUrl = imageUrl,
+    summaryHtml = summaryHtml,
+    rating = rating,
+    genres = genres.joinToString(GENRE_SEPARATOR),
+    schedule = schedule,
+    network = network,
+    premiered = premiered,
+    language = language,
+    runtime = runtime,
+    status = status,
+    updatedAtEpochMillis = updatedAtEpochMillis,
+)
+
+fun CachedShowEntity.toDomain(): TvShow = TvShow(
+    id = id,
+    name = name,
+    imageUrl = imageUrl,
+    summaryHtml = summaryHtml,
+    rating = rating,
+    genres = genres.takeIf { it.isNotEmpty() }?.split(GENRE_SEPARATOR).orEmpty(),
+    schedule = schedule,
+    network = network,
+    premiered = premiered,
+    language = language,
+    runtime = runtime,
+    status = status,
+)
+
 fun TvShow.toFavoriteEntity(): FavoriteShowEntity = FavoriteShowEntity(
     id = id,
     name = name,
@@ -39,6 +73,8 @@ fun TvShow.toFavoriteEntity(): FavoriteShowEntity = FavoriteShowEntity(
     network = network,
     premiered = premiered,
     language = language,
+    runtime = runtime,
+    status = status,
 )
 
 fun FavoriteShowEntity.toDomain(): TvShow = TvShow(
@@ -52,4 +88,6 @@ fun FavoriteShowEntity.toDomain(): TvShow = TvShow(
     network = network,
     premiered = premiered,
     language = language,
+    runtime = runtime,
+    status = status,
 )

@@ -1,6 +1,9 @@
 package com.kelvinsaputra.tvpulse.ui.home
 
 import com.kelvinsaputra.tvpulse.domain.usecase.GetTopShowsUseCase
+import com.kelvinsaputra.tvpulse.domain.usecase.HasHomeCacheUseCase
+import com.kelvinsaputra.tvpulse.domain.usecase.LoadMoreHomeShowsUseCase
+import com.kelvinsaputra.tvpulse.domain.usecase.ObserveHomeShowsUseCase
 import com.kelvinsaputra.tvpulse.testutil.FakeTvShowRepository
 import com.kelvinsaputra.tvpulse.testutil.MainDispatcherRule
 import com.kelvinsaputra.tvpulse.testutil.sampleShow
@@ -8,7 +11,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Rule
 import org.junit.Test
 
@@ -19,38 +23,35 @@ class HomeViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun `home transitions from loading to success`() = runTest {
+    fun `home syncs server result into cached ui`() = runTest {
         val repository = FakeTvShowRepository().apply {
             topShows = listOf(sampleShow())
         }
-        val viewModel = HomeViewModel(GetTopShowsUseCase(repository))
-
-        assertEquals(HomeUiState.Loading, viewModel.uiState.value)
-        advanceUntilIdle()
-
-        val state = viewModel.uiState.value
-        assertTrue(state is HomeUiState.Success)
-        assertEquals(1, (state as HomeUiState.Success).shows.size)
-    }
-
-    @Test
-    fun `home exposes empty state for empty repository result`() = runTest {
-        val viewModel = HomeViewModel(GetTopShowsUseCase(FakeTvShowRepository()))
+        val viewModel = createViewModel(repository)
 
         advanceUntilIdle()
 
-        assertEquals(HomeUiState.Empty, viewModel.uiState.value)
+        assertEquals(1, viewModel.uiState.value.shows.size)
+        assertFalse(viewModel.uiState.value.isInitialLoading)
     }
 
     @Test
-    fun `home exposes error state when repository fails`() = runTest {
+    fun `home shows blocking error only when no cache exists`() = runTest {
         val repository = FakeTvShowRepository().apply {
             topShowsError = IllegalStateException("boom")
         }
-        val viewModel = HomeViewModel(GetTopShowsUseCase(repository))
+        val viewModel = createViewModel(repository)
 
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value is HomeUiState.Error)
+        assertNotNull(viewModel.uiState.value.blockingError)
+        assertEquals(emptyList<Any>(), viewModel.uiState.value.shows)
     }
+
+    private fun createViewModel(repository: FakeTvShowRepository) = HomeViewModel(
+        observeHomeShowsUseCase = ObserveHomeShowsUseCase(repository),
+        hasHomeCacheUseCase = HasHomeCacheUseCase(repository),
+        getTopShowsUseCase = GetTopShowsUseCase(repository),
+        loadMoreHomeShowsUseCase = LoadMoreHomeShowsUseCase(repository),
+    )
 }

@@ -1,0 +1,45 @@
+<resources>
+    <string name="app_name">TVPulse</string>
+    <string name="tab_home">HOME</string>
+    <string name="tab_favorite">FAVORITE</string>
+    <string name="back">Back</string>
+    <string name="language">Language</string>
+    <string name="language_indonesian">Indonesia</string>
+    <string name="language_english">English</string>
+
+    <string name="search_placeholder">Search TV shows (e.g. horror)…</string>
+    <string name="clear_search">Clear search</string>
+    <string name="popular_shows_count">POPULAR SHOWS (%1$d Shows)</string>
+    <string name="search_results_count">SEARCH RESULTS (%1$d Shows)</string>
+    <string name="search_not_found">No Results Found</string>
+    <string name="search_not_found_message">Nothing matched your search.\nTry another keyword or check the spelling.</string>
+    <string name="home_empty">No TV shows are available.</string>
+
+    <string name="favorites_title">My Favorites</string>
+    <string name="favorites_count">My Favorites (%1$d Shows)</string>
+    <string name="favorites_empty_title">No Favorites Yet</string>
+    <string name="favorites_empty_message">Browse TV shows and add the ones you like.</string>
+    <string name="remove">REMOVE</string>
+    <string name="genre_fallback">Genre</string>
+    <string name="remove_favorite_error_title">Failed to Remove Favorite</string>
+
+    <string name="add_favorite">ADD TO FAVORITES</string>
+    <string name="remove_from_favorite">REMOVE FROM FAVORITES</string>
+    <string name="favorite_update_error_title">Failed to Update Favorite</string>
+    <string name="synopsis">Synopsis</string>
+    <string name="synopsis_unavailable">Synopsis is not available.</string>
+    <string name="status_running">Running</string>
+    <string name="status_ended">Ended</string>
+    <string name="status_in_development">In Development</string>
+    <string name="poster_content_description">%1$s poster</string>
+
+    <string name="connection_error_title">Connection Problem</string>
+    <string name="connection_error_message">We could not reach the server. Check your internet connection and try again.</string>
+    <string name="generic_error_message">Something went wrong. Please try again.</string>
+    <string name="retry">TRY AGAIN</string>
+    <string name="close">CLOSE</string>
+
+    <string name="syncing">Syncing the latest data…</string>
+    <string name="sync_failed_cached">Could not refresh. Showing saved data.</string>
+    <string name="loading_more">Loading more…</string>
+</resources>

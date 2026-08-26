@@ -20,10 +20,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.kelvinsaputra.tvpulse.R
 import com.kelvinsaputra.tvpulse.domain.model.TvShow
 import java.util.Locale
 
@@ -45,7 +47,10 @@ internal fun ShowGridCard(
         Column {
             PosterImage(
                 imageUrl = show.imageUrl,
-                contentDescription = "Poster ${show.name}",
+                contentDescription = stringResource(
+                    R.string.poster_content_description,
+                    show.name,
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(0.78f),
@@ -97,7 +102,10 @@ internal fun FavoriteShowCard(
         ) {
             PosterImage(
                 imageUrl = show.imageUrl,
-                contentDescription = "Poster ${show.name}",
+                contentDescription = stringResource(
+                    R.string.poster_content_description,
+                    show.name,
+                ),
                 modifier = Modifier.size(64.dp),
             )
 
@@ -113,7 +121,8 @@ internal fun FavoriteShowCard(
                 )
 
                 Text(
-                    text = show.genres.firstOrNull() ?: "Genre",
+                    text = show.genres.firstOrNull()
+                        ?: stringResource(R.string.genre_fallback),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -126,7 +135,7 @@ internal fun FavoriteShowCard(
                 ),
             ) {
                 Text(
-                    text = "HAPUS",
+                    text = stringResource(R.string.remove),
                     fontWeight = FontWeight.Bold,
                 )
             }

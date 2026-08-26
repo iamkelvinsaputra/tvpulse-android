@@ -1,13 +1,14 @@
 package com.kelvinsaputra.tvpulse.ui.detail
 
 import com.kelvinsaputra.tvpulse.domain.model.TvShow
+import com.kelvinsaputra.tvpulse.ui.components.UiError
 
-sealed interface DetailUiState {
-    data object Loading : DetailUiState
-    data class Success(
-        val show: TvShow,
-        val isFavorite: Boolean,
-        val isFavoriteUpdating: Boolean = false,
-    ) : DetailUiState
-    data class Error(val message: String) : DetailUiState
-}
+data class DetailUiState(
+    val show: TvShow? = null,
+    val isInitialLoading: Boolean = true,
+    val isSyncing: Boolean = false,
+    val isFavorite: Boolean = false,
+    val isFavoriteUpdating: Boolean = false,
+    val blockingError: UiError? = null,
+    val syncError: UiError? = null,
+)

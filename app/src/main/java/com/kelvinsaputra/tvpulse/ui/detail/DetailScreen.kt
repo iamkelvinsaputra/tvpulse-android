@@ -38,12 +38,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.kelvinsaputra.tvpulse.R
 import com.kelvinsaputra.tvpulse.domain.model.TvShow
 import com.kelvinsaputra.tvpulse.ui.components.ErrorDialog
+import com.kelvinsaputra.tvpulse.ui.components.LanguageSwitcher
+import com.kelvinsaputra.tvpulse.ui.components.SyncStatusBanner
+import com.kelvinsaputra.tvpulse.ui.components.UiError
+import com.kelvinsaputra.tvpulse.ui.components.asMessage
 
 @Composable
 fun DetailRoute(
@@ -68,16 +74,16 @@ fun DetailRoute(
 @Composable
 fun DetailScreen(
     uiState: DetailUiState,
-    actionError: String?,
+    actionError: UiError?,
     onBack: () -> Unit,
     onRetry: () -> Unit,
     onToggleFavorite: () -> Unit,
     onRetryFavorite: () -> Unit,
     onDismissActionError: () -> Unit,
 ) {
-    val errorMessage = (uiState as? DetailUiState.Error)?.message
-    var showErrorDialog by remember(errorMessage) {
-        mutableStateOf(errorMessage != null)
+    val activeError = uiState.blockingError
+    var showErrorDialog by remember(activeError) {
+        mutableStateOf(activeError != null)
     }
 
     Scaffold(
@@ -89,9 +95,12 @@ fun DetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Kembali",
+                            contentDescription = stringResource(R.string.back),
                         )
                     }
+                },
+                actions = {
+                    LanguageSwitcher()
                 },
             )
         },
@@ -102,30 +111,39 @@ fun DetailScreen(
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding),
         ) {
-            when (uiState) {
-                DetailUiState.Loading -> CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                )
+            when {
+                uiState.isInitialLoading && uiState.show == null -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                }
 
-                is DetailUiState.Error -> DetailErrorState(
-                    message = uiState.message,
-                    onRetry = onRetry,
-                    modifier = Modifier.align(Alignment.Center),
-                )
+                uiState.blockingError != null && uiState.show == null -> {
+                    DetailErrorState(
+                        error = uiState.blockingError,
+                        onRetry = onRetry,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                }
 
-                is DetailUiState.Success -> DetailContent(
-                    show = uiState.show,
-                    isFavorite = uiState.isFavorite,
-                    isFavoriteUpdating = uiState.isFavoriteUpdating,
-                    onToggleFavorite = onToggleFavorite,
-                )
+                uiState.show != null -> {
+                    DetailContent(
+                        show = uiState.show,
+                        isSyncing = uiState.isSyncing,
+                        syncError = uiState.syncError,
+                        isFavorite = uiState.isFavorite,
+                        isFavoriteUpdating = uiState.isFavoriteUpdating,
+                        onRetrySync = onRetry,
+                        onToggleFavorite = onToggleFavorite,
+                    )
+                }
             }
         }
     }
 
-    if (errorMessage != null && showErrorDialog) {
+    if (activeError != null && showErrorDialog) {
         ErrorDialog(
-            message = errorMessage,
+            error = activeError,
             onRetry = {
                 showErrorDialog = false
                 onRetry()
@@ -138,8 +156,8 @@ fun DetailScreen(
 
     if (actionError != null) {
         ErrorDialog(
-            title = "Gagal Memperbarui Favorit",
-            message = actionError,
+            title = stringResource(R.string.favorite_update_error_title),
+            error = actionError,
             onRetry = onRetryFavorite,
             onDismiss = onDismissActionError,
         )
@@ -148,7 +166,7 @@ fun DetailScreen(
 
 @Composable
 private fun DetailErrorState(
-    message: String,
+    error: UiError,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -157,7 +175,7 @@ private fun DetailErrorState(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "Gangguan Koneksi",
+            text = stringResource(R.string.connection_error_title),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
         )
@@ -165,14 +183,14 @@ private fun DetailErrorState(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = message,
+            text = error.asMessage(),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         Spacer(Modifier.height(16.dp))
 
         Button(onClick = onRetry) {
-            Text("COBA LAGI")
+            Text(stringResource(R.string.retry))
         }
     }
 }
@@ -180,8 +198,11 @@ private fun DetailErrorState(
 @Composable
 private fun DetailContent(
     show: TvShow,
+    isSyncing: Boolean,
+    syncError: UiError?,
     isFavorite: Boolean,
     isFavoriteUpdating: Boolean,
+    onRetrySync: () -> Unit,
     onToggleFavorite: () -> Unit,
 ) {
     Column(
@@ -190,6 +211,12 @@ private fun DetailContent(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
     ) {
+        SyncStatusBanner(
+            isSyncing = isSyncing,
+            syncError = syncError,
+            onRetry = onRetrySync,
+        )
+
         Text(
             text = show.name,
             style = MaterialTheme.typography.headlineMedium,
@@ -201,7 +228,10 @@ private fun DetailContent(
         if (show.imageUrl != null) {
             AsyncImage(
                 model = show.imageUrl,
-                contentDescription = "Poster ${show.name}",
+                contentDescription = stringResource(
+                    R.string.poster_content_description,
+                    show.name,
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(),
@@ -228,18 +258,20 @@ private fun DetailContent(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
-                text = if (isFavorite) {
-                    "HAPUS DARI FAVORIT"
-                } else {
-                    "TAMBAH KE FAVORIT"
-                },
+                text = stringResource(
+                    if (isFavorite) {
+                        R.string.remove_from_favorite
+                    } else {
+                        R.string.add_favorite
+                    }
+                ),
             )
         }
 
         Spacer(Modifier.height(20.dp))
 
         Text(
-            text = "Sinopsis",
+            text = stringResource(R.string.synopsis),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
         )
@@ -249,7 +281,7 @@ private fun DetailContent(
         Text(
             text = show.summaryHtml
                 ?.let { Html.fromHtml(it, Html.FROM_HTML_MODE_LEGACY).toString() }
-                ?: "Sinopsis belum tersedia.",
+                ?: stringResource(R.string.synopsis_unavailable),
             style = MaterialTheme.typography.bodyMedium,
         )
 
@@ -289,9 +321,10 @@ private fun ShowMetadataChips(show: TvShow) {
     }
 }
 
+@Composable
 private fun String.toDisplayStatus(): String = when (lowercase()) {
-    "running" -> "Berjalan"
-    "ended" -> "Selesai"
-    "in development" -> "Dalam Pengembangan"
+    "running" -> stringResource(R.string.status_running)
+    "ended" -> stringResource(R.string.status_ended)
+    "in development" -> stringResource(R.string.status_in_development)
     else -> this
 }

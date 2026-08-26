@@ -1,13 +1,16 @@
 package com.kelvinsaputra.tvpulse.ui.search
 
 import com.kelvinsaputra.tvpulse.domain.model.TvShow
+import com.kelvinsaputra.tvpulse.ui.components.UiError
 
-sealed interface SearchUiState {
-    data class Loading(val query: String) : SearchUiState
-    data class Success(val query: String, val shows: List<TvShow>) : SearchUiState
-    data class Empty(
-        val query: String = "",
-        val message: String = "Search for a TV show.",
-    ) : SearchUiState
-    data class Error(val query: String, val message: String) : SearchUiState
-}
+data class SearchUiState(
+    val query: String = "",
+    val shows: List<TvShow> = emptyList(),
+    val hasSearched: Boolean = false,
+    val isInitialLoading: Boolean = false,
+    val isSyncing: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val canLoadMore: Boolean = false,
+    val blockingError: UiError? = null,
+    val syncError: UiError? = null,
+)

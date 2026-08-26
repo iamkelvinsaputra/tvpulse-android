@@ -13,7 +13,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.kelvinsaputra.tvpulse.R
 
 internal enum class TvPulseTab {
     HOME,
@@ -43,15 +45,19 @@ internal fun TvPulseMainHeader(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Kembali",
+                            contentDescription = stringResource(R.string.back),
                         )
                     }
                 }
+            },
+            actions = {
+                LanguageSwitcher()
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             ),
         )
 
@@ -65,7 +71,7 @@ internal fun TvPulseMainHeader(
                 onClick = onHomeClick,
                 text = {
                     Text(
-                        text = "HOME",
+                        text = stringResource(R.string.tab_home),
                         fontWeight = if (selectedTab == TvPulseTab.HOME) {
                             FontWeight.Bold
                         } else {
@@ -80,7 +86,7 @@ internal fun TvPulseMainHeader(
                 onClick = onFavoriteClick,
                 text = {
                     Text(
-                        text = "FAVORITE",
+                        text = stringResource(R.string.tab_favorite),
                         fontWeight = if (selectedTab == TvPulseTab.FAVORITE) {
                             FontWeight.Bold
                         } else {

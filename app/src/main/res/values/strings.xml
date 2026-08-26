@@ -1,3 +1,45 @@
 <resources>
     <string name="app_name">TVPulse</string>
+    <string name="tab_home">HOME</string>
+    <string name="tab_favorite">FAVORIT</string>
+    <string name="back">Kembali</string>
+    <string name="language">Bahasa</string>
+    <string name="language_indonesian">Indonesia</string>
+    <string name="language_english">English</string>
+
+    <string name="search_placeholder">Cari Serial TV (misal: horror)…</string>
+    <string name="clear_search">Hapus pencarian</string>
+    <string name="popular_shows_count">DAFTAR ACARA POPULER (%1$d Film)</string>
+    <string name="search_results_count">HASIL PENCARIAN (%1$d Film)</string>
+    <string name="search_not_found">Pencarian Tidak Ditemukan</string>
+    <string name="search_not_found_message">Hups! Tidak ditemukan apa pun.\nCoba kata kunci lain atau periksa ejaan.</string>
+    <string name="home_empty">Tidak ada acara TV yang dapat ditampilkan.</string>
+
+    <string name="favorites_title">Favorit Saya</string>
+    <string name="favorites_count">Favorit Saya (%1$d Film)</string>
+    <string name="favorites_empty_title">Belum Ada Favorit</string>
+    <string name="favorites_empty_message">Jelajahi acara TV dan tambahkan acara favoritmu.</string>
+    <string name="remove">HAPUS</string>
+    <string name="genre_fallback">Genre</string>
+    <string name="remove_favorite_error_title">Gagal Menghapus Favorit</string>
+
+    <string name="add_favorite">TAMBAH KE FAVORIT</string>
+    <string name="remove_from_favorite">HAPUS DARI FAVORIT</string>
+    <string name="favorite_update_error_title">Gagal Memperbarui Favorit</string>
+    <string name="synopsis">Sinopsis</string>
+    <string name="synopsis_unavailable">Sinopsis belum tersedia.</string>
+    <string name="status_running">Berjalan</string>
+    <string name="status_ended">Selesai</string>
+    <string name="status_in_development">Dalam Pengembangan</string>
+    <string name="poster_content_description">Poster %1$s</string>
+
+    <string name="connection_error_title">Gangguan Koneksi</string>
+    <string name="connection_error_message">Terjadi kesalahan saat menghubungi server kami. Pastikan perangkat Anda terhubung ke internet dan coba lagi.</string>
+    <string name="generic_error_message">Terjadi kesalahan. Silakan coba lagi.</string>
+    <string name="retry">COBA LAGI</string>
+    <string name="close">TUTUP</string>
+
+    <string name="syncing">Menyinkronkan data terbaru…</string>
+    <string name="sync_failed_cached">Gagal memperbarui data. Menampilkan data tersimpan.</string>
+    <string name="loading_more">Memuat lebih banyak…</string>
 </resources>

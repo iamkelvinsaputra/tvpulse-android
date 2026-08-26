@@ -1,10 +1,14 @@
 package com.kelvinsaputra.tvpulse.ui.home
 
 import com.kelvinsaputra.tvpulse.domain.model.TvShow
+import com.kelvinsaputra.tvpulse.ui.components.UiError
 
-sealed interface HomeUiState {
-    data object Loading : HomeUiState
-    data class Success(val shows: List<TvShow>) : HomeUiState
-    data object Empty : HomeUiState
-    data class Error(val message: String) : HomeUiState
-}
+data class HomeUiState(
+    val shows: List<TvShow> = emptyList(),
+    val isInitialLoading: Boolean = true,
+    val isSyncing: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val canLoadMore: Boolean = true,
+    val blockingError: UiError? = null,
+    val syncError: UiError? = null,
+)

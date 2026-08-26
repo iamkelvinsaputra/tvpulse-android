@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -26,24 +28,32 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kelvinsaputra.tvpulse.R
 import com.kelvinsaputra.tvpulse.domain.model.TvShow
 import com.kelvinsaputra.tvpulse.ui.components.ErrorDialog
 import com.kelvinsaputra.tvpulse.ui.components.ShowGridCard
+import com.kelvinsaputra.tvpulse.ui.components.SyncStatusBanner
 import com.kelvinsaputra.tvpulse.ui.components.TvPulseMainHeader
 import com.kelvinsaputra.tvpulse.ui.components.TvPulseTab
+import com.kelvinsaputra.tvpulse.ui.components.UiError
+import com.kelvinsaputra.tvpulse.ui.components.asMessage
 import com.kelvinsaputra.tvpulse.ui.search.SearchUiState
 import com.kelvinsaputra.tvpulse.ui.search.SearchViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun HomeRoute(
@@ -64,7 +74,9 @@ fun HomeRoute(
         onShowClick = onShowClick,
         onFavoritesClick = onFavoritesClick,
         onHomeRetry = homeViewModel::retry,
+        onHomeLoadMore = homeViewModel::loadMore,
         onSearchRetry = searchViewModel::retry,
+        onSearchLoadMore = searchViewModel::loadMore,
     )
 }
 
@@ -77,15 +89,17 @@ fun HomeScreen(
     onShowClick: (Long) -> Unit,
     onFavoritesClick: () -> Unit,
     onHomeRetry: () -> Unit,
+    onHomeLoadMore: () -> Unit,
     onSearchRetry: () -> Unit,
+    onSearchLoadMore: () -> Unit,
 ) {
     val normalizedQuery = query.trim()
     val activeError = if (normalizedQuery.isBlank()) {
-        (homeUiState as? HomeUiState.Error)?.message
+        homeUiState.blockingError
     } else {
-        (searchUiState as? SearchUiState.Error)
-            ?.takeIf { it.query == normalizedQuery }
-            ?.message
+        searchUiState
+            .takeIf { it.query == normalizedQuery }
+            ?.blockingError
     }
 
     var showErrorDialog by remember(activeError) {
@@ -96,7 +110,7 @@ fun HomeScreen(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TvPulseMainHeader(
-                title = "TVPulse",
+                title = stringResource(R.string.app_name),
                 selectedTab = TvPulseTab.HOME,
                 onHomeClick = {},
                 onFavoriteClick = onFavoritesClick,
@@ -117,7 +131,7 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .padding(top = 10.dp),
                 placeholder = {
-                    Text("Cari Serial TV (misal: horror)...")
+                    Text(stringResource(R.string.search_placeholder))
                 },
                 leadingIcon = {
                     Icon(
@@ -130,7 +144,7 @@ fun HomeScreen(
                         IconButton(onClick = { onQueryChange("") }) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Hapus pencarian",
+                                contentDescription = stringResource(R.string.clear_search),
                             )
                         }
                     }
@@ -150,6 +164,7 @@ fun HomeScreen(
                         uiState = homeUiState,
                         onShowClick = onShowClick,
                         onRetry = onHomeRetry,
+                        onLoadMore = onHomeLoadMore,
                     )
                 } else {
                     SearchContent(
@@ -157,6 +172,7 @@ fun HomeScreen(
                         uiState = searchUiState,
                         onShowClick = onShowClick,
                         onRetry = onSearchRetry,
+                        onLoadMore = onSearchLoadMore,
                     )
                 }
             }
@@ -165,7 +181,7 @@ fun HomeScreen(
 
     if (activeError != null && showErrorDialog) {
         ErrorDialog(
-            message = activeError,
+            error = activeError,
             onRetry = {
                 showErrorDialog = false
                 if (normalizedQuery.isBlank()) {
@@ -186,22 +202,42 @@ private fun HomeContent(
     uiState: HomeUiState,
     onShowClick: (Long) -> Unit,
     onRetry: () -> Unit,
+    onLoadMore: () -> Unit,
 ) {
-    when (uiState) {
-        HomeUiState.Loading -> LoadingState()
-
-        HomeUiState.Empty -> EmptyHome(onRetry = onRetry)
-
-        is HomeUiState.Error -> ErrorState(
-            message = uiState.message,
+    when {
+        uiState.isInitialLoading && uiState.shows.isEmpty() -> LoadingState()
+        uiState.blockingError != null && uiState.shows.isEmpty() -> ErrorState(
+            error = uiState.blockingError,
             onRetry = onRetry,
         )
-
-        is HomeUiState.Success -> ShowGrid(
-            title = "DAFTAR ACARA POPULER (${uiState.shows.size} Film)",
-            shows = uiState.shows,
-            onShowClick = onShowClick,
-        )
+        uiState.shows.isEmpty() -> Column(modifier = Modifier.fillMaxSize()) {
+            SyncStatusBanner(
+                isSyncing = uiState.isSyncing,
+                syncError = uiState.syncError,
+                onRetry = onRetry,
+            )
+            Box(modifier = Modifier.weight(1f)) {
+                EmptyHome(onRetry = onRetry)
+            }
+        }
+        else -> Column(modifier = Modifier.fillMaxSize()) {
+            SyncStatusBanner(
+                isSyncing = uiState.isSyncing,
+                syncError = uiState.syncError,
+                onRetry = onRetry,
+            )
+            ShowGrid(
+                title = stringResource(
+                    R.string.popular_shows_count,
+                    uiState.shows.size,
+                ),
+                shows = uiState.shows,
+                isLoadingMore = uiState.isLoadingMore,
+                canLoadMore = uiState.canLoadMore,
+                onShowClick = onShowClick,
+                onLoadMore = onLoadMore,
+            )
+        }
     }
 }
 
@@ -211,43 +247,80 @@ private fun SearchContent(
     uiState: SearchUiState,
     onShowClick: (Long) -> Unit,
     onRetry: () -> Unit,
+    onLoadMore: () -> Unit,
 ) {
-    if (uiState.queryValue() != query) {
+    if (uiState.query != query) {
         LoadingState()
         return
     }
 
-    when (uiState) {
-        is SearchUiState.Loading -> LoadingState()
-
-        is SearchUiState.Success -> ShowGrid(
-            title = "DAFTAR UTAMA (${uiState.shows.size} Film)",
-            shows = uiState.shows,
-            onShowClick = onShowClick,
-        )
-
-        is SearchUiState.Empty -> SearchEmptyState()
-
-        is SearchUiState.Error -> ErrorState(
-            message = uiState.message,
+    when {
+        uiState.isInitialLoading && uiState.shows.isEmpty() -> LoadingState()
+        uiState.blockingError != null && uiState.shows.isEmpty() -> ErrorState(
+            error = uiState.blockingError,
             onRetry = onRetry,
         )
+        uiState.hasSearched && uiState.shows.isEmpty() -> Column(
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            SyncStatusBanner(
+                isSyncing = uiState.isSyncing,
+                syncError = uiState.syncError,
+                onRetry = onRetry,
+            )
+            Box(modifier = Modifier.weight(1f)) {
+                SearchEmptyState()
+            }
+        }
+        else -> Column(modifier = Modifier.fillMaxSize()) {
+            SyncStatusBanner(
+                isSyncing = uiState.isSyncing,
+                syncError = uiState.syncError,
+                onRetry = onRetry,
+            )
+            ShowGrid(
+                title = stringResource(
+                    R.string.search_results_count,
+                    uiState.shows.size,
+                ),
+                shows = uiState.shows,
+                isLoadingMore = uiState.isLoadingMore,
+                canLoadMore = uiState.canLoadMore,
+                onShowClick = onShowClick,
+                onLoadMore = onLoadMore,
+            )
+        }
     }
-}
-
-private fun SearchUiState.queryValue(): String = when (this) {
-    is SearchUiState.Loading -> query
-    is SearchUiState.Success -> query
-    is SearchUiState.Empty -> query
-    is SearchUiState.Error -> query
 }
 
 @Composable
 private fun ShowGrid(
     title: String,
     shows: List<TvShow>,
+    isLoadingMore: Boolean,
+    canLoadMore: Boolean,
     onShowClick: (Long) -> Unit,
+    onLoadMore: () -> Unit,
 ) {
+    val gridState = rememberLazyGridState()
+
+    LaunchedEffect(gridState, shows.size, canLoadMore, isLoadingMore) {
+        snapshotFlow {
+            gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+        }
+            .distinctUntilChanged()
+            .collect { lastVisibleIndex ->
+                if (
+                    canLoadMore &&
+                    !isLoadingMore &&
+                    shows.isNotEmpty() &&
+                    lastVisibleIndex >= shows.lastIndex - LOAD_MORE_THRESHOLD
+                ) {
+                    onLoadMore()
+                }
+            }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -262,6 +335,7 @@ private fun ShowGrid(
         )
 
         LazyVerticalGrid(
+            state = gridState,
             columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 16.dp),
@@ -276,6 +350,22 @@ private fun ShowGrid(
                     show = show,
                     onClick = { onShowClick(show.id) },
                 )
+            }
+
+            if (isLoadingMore) {
+                item(
+                    key = "loading-more",
+                    span = { GridItemSpan(maxLineSpan) },
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
             }
         }
     }
@@ -299,7 +389,7 @@ private fun SearchEmptyState() {
         Spacer(Modifier.height(16.dp))
 
         Text(
-            text = "Pencarian Tidak Ditemukan",
+            text = stringResource(R.string.search_not_found),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -308,7 +398,7 @@ private fun SearchEmptyState() {
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Hups! Tidak ditemukan apa pun.\nCoba kata kunci lain atau periksa ejaan.",
+            text = stringResource(R.string.search_not_found_message),
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -317,7 +407,7 @@ private fun SearchEmptyState() {
 
 @Composable
 private fun ErrorState(
-    message: String,
+    error: UiError,
     onRetry: () -> Unit,
 ) {
     Column(
@@ -328,7 +418,7 @@ private fun ErrorState(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = "Gangguan Koneksi",
+            text = stringResource(R.string.connection_error_title),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -337,7 +427,7 @@ private fun ErrorState(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = message,
+            text = error.asMessage(),
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -345,7 +435,7 @@ private fun ErrorState(
         Spacer(Modifier.height(16.dp))
 
         Button(onClick = onRetry) {
-            Text("COBA LAGI")
+            Text(stringResource(R.string.retry))
         }
     }
 }
@@ -359,12 +449,12 @@ private fun EmptyHome(onRetry: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("Tidak ada acara TV yang dapat ditampilkan.")
+        Text(stringResource(R.string.home_empty))
 
         Spacer(Modifier.height(12.dp))
 
         Button(onClick = onRetry) {
-            Text("COBA LAGI")
+            Text(stringResource(R.string.retry))
         }
     }
 }
@@ -378,3 +468,5 @@ private fun LoadingState() {
         CircularProgressIndicator()
     }
 }
+
+private const val LOAD_MORE_THRESHOLD = 4

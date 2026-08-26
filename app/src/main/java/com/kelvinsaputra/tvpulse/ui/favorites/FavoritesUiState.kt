@@ -1,10 +1,13 @@
 package com.kelvinsaputra.tvpulse.ui.favorites
 
 import com.kelvinsaputra.tvpulse.domain.model.TvShow
+import com.kelvinsaputra.tvpulse.ui.components.UiError
 
-sealed interface FavoritesUiState {
-    data object Loading : FavoritesUiState
-    data class Success(val shows: List<TvShow>) : FavoritesUiState
-    data object Empty : FavoritesUiState
-    data class Error(val message: String) : FavoritesUiState
-}
+data class FavoritesUiState(
+    val shows: List<TvShow> = emptyList(),
+    val isInitialLoading: Boolean = true,
+    val isSyncing: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val canLoadMore: Boolean = false,
+    val syncError: UiError? = null,
+)
