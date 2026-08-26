@@ -6,8 +6,6 @@ I built this project with Kotlin and Jetpack Compose. The main focus is not only
 
 ## Screenshots
 
-> Replace these placeholders with screenshots from the app before submitting.
-
 <p align="center">
   <img src="docs/screenshots/home.png" width="220" alt="Home screen" />
   <img src="docs/screenshots/search.png" width="220" alt="Search screen" />
