@@ -28,7 +28,7 @@ I built this project with Kotlin and Jetpack Compose. The main focus is not only
 - Retry button for failed network images.
 - Indonesian and English app languages.
 - Connection error handling with retry.
-- Detail deep links.
+- Custom-scheme deep links for Home, Search, Favorites, and Detail.
 - Consistent in-app back navigation animation.
 
 ## Offline-first
@@ -38,19 +38,7 @@ The app uses Room as the source of truth for UI data.
 The UI does not need to wait for the network when cached data is already available.
 
 ```text
-TVmaze API
-    |
-    v
-Repository
-    |
-    v
-Room
-    |
-    v
-ViewModel
-    |
-    v
-Compose UI
+TVmaze API -> Repository -> Room -> ViewModel -> Compose UI
 ```
 
 The basic behavior is:
@@ -76,15 +64,7 @@ When cached data already exists, it is shown immediately while the app checks th
 Home uses pagination with **30 visible items per batch**.
 
 ```text
-30 items
-   |
-scroll
-   v
-60 items
-   |
-scroll
-   v
-90 items
+30 items -> Scroll -> 60 items -> Scroll -> 90 items
 ```
 
 TVmaze `/shows?page={page}` is used to fetch more remote data when the local cache does not have enough items.
@@ -129,17 +109,7 @@ For example:
 Because of this, the app keeps the favorite membership local while synchronizing the latest show metadata from TVmaze.
 
 ```text
-Favorite membership
-        |
-        v
-      Room
-   local only
-
-Favorite show metadata
-        |
-        +---- cached in Room
-        |
-        +---- refreshed from TVmaze
+Favorite membership -> Room (local only) -> Favorite Show Metadata (Cached in room & Refreshed from TVmaze)
 ```
 
 Favorites are shown in local batches. When another favorite page becomes visible, that page can synchronize its metadata without reloading the entire favorite list.
@@ -163,22 +133,7 @@ While an image is loading, the UI shows a loading indicator.
 If loading fails, the image area shows a clickable retry icon.
 
 ```text
-Loading
-   |
-   v
- Image
-
-or
-
-Loading
-   |
-   v
- Error
-   |
- tap retry
-   |
-   v
-Loading again
+Loading -> Image or Loading -> Error -> Tap Retry -> Loading again
 ```
 
 This behavior is used for network images across the app, not only on Home.
@@ -193,8 +148,8 @@ The app shows an error state because there is nothing else to display.
 
 The connection dialog provides:
 
-- **Close** — closes the dialog.
-- **Try Again** — closes the dialog, returns to loading, and starts the request again.
+- **Close** -> closes the dialog.
+- **Try Again** -> closes the dialog, returns to loading, and starts the request again.
 
 ### Cached data exists
 
@@ -229,52 +184,79 @@ The system Back button and the Back button inside the app use matching in-app tr
 
 When Back is pressed from the root Home screen, Android can still use its normal system animation for leaving the app.
 
-### Deep link
+### Custom deep links
 
-Detail supports this custom deep link:
+TVPulse supports custom-scheme deep links using:
 
 ```text
-tvpulse-kelvin://detail/{showId}
+movieapp://
 ```
 
-Example:
+Supported routes:
+
+| Screen | Deep link                    |
+| --- |------------------------------|
+| Home | `movieapp://home`            |
+| Search | `movieapp://search?q=office` |
+| Favorites | `movieapp://favorites`       |
+| Detail | `movieapp://detail/42`       |
+
+Search is still part of the Home screen. Opening a Search deep link opens Home and applies the query.
+
+You can test the deep links with ADB.
+
+Home:
 
 ```bash
 adb shell am start -W \
   -a android.intent.action.VIEW \
-  -d "tvpulse-kelvin://detail/1" \
+  -d "movieapp://home" \
   com.kelvinsaputra.tvpulse
 ```
+
+Search:
+
+```bash
+adb shell am start -W \
+  -a android.intent.action.VIEW \
+  -d "movieapp://search?q=office" \
+  com.kelvinsaputra.tvpulse
+```
+
+Favorites:
+
+```bash
+adb shell am start -W \
+  -a android.intent.action.VIEW \
+  -d "movieapp://favorites" \
+  com.kelvinsaputra.tvpulse
+```
+
+Detail:
+
+```bash
+adb shell am start -W \
+  -a android.intent.action.VIEW \
+  -d "movieapp://detail/42" \
+  com.kelvinsaputra.tvpulse
+```
+
+These are custom-scheme deep links, not verified Android App Links. A production App Link would normally use an HTTPS URL and domain verification.
 
 ## Architecture
 
 The project uses a simple Clean Architecture structure.
 
 ```text
-UI
- |
- v
-ViewModel
- |
- v
-Use Case
- |
- v
-Repository Interface
- ^
- |
-Repository Implementation
- |                |
- v                v
-Room           Retrofit
+UI -> ViewModel -> Use Case -> Repository Interface -> Repository Implementation (Room or Retrofit)
 ```
 
 The main layers are:
 
-- **UI** — Jetpack Compose screens and UI state.
-- **ViewModel** — handles screen state and user actions.
-- **Domain** — models, repository contracts, and use cases.
-- **Data** — Room, Retrofit, DTOs, mappers, and repository implementation.
+- **UI** : Jetpack Compose screens and UI state.
+- **ViewModel** : handles screen state and user actions.
+- **Domain** : models, repository contracts, and use cases.
+- **Data** : Room, Retrofit, DTOs, mappers, and repository implementation.
 
 The project stays in a single Gradle module because the current app is small enough that splitting it into many modules would add complexity without much benefit.
 
@@ -361,60 +343,6 @@ Run unit tests with:
 ./gradlew testDebugUnitTest
 ```
 
-## Adding screenshots to this README
-
-Create this folder inside the repository:
-
-```text
-docs/
-└── screenshots/
-```
-
-Put your screenshots there. For example:
-
-```text
-docs/screenshots/home.png
-docs/screenshots/search.png
-docs/screenshots/detail.png
-docs/screenshots/favorites.png
-```
-
-The screenshot section at the top of this README already uses those paths:
-
-```html
-<p align="center">
-  <img src="docs/screenshots/home.png" width="220" alt="Home screen" />
-  <img src="docs/screenshots/search.png" width="220" alt="Search screen" />
-  <img src="docs/screenshots/detail.png" width="220" alt="Detail screen" />
-  <img src="docs/screenshots/favorites.png" width="220" alt="Favorites screen" />
-</p>
-```
-
-Then add and commit the images together with the README:
-
-```bash
-git add README.md docs/screenshots
-git commit -m "docs: update README with app screenshots"
-```
-
-### Adding only one image
-
-Normal Markdown also works:
-
-```md
-![Home screen](docs/screenshots/home.png)
-```
-
-HTML is useful when you want to control the image width or place several phone screenshots next to each other.
-
-### Screenshot tips
-
-- Use `.png` for app screenshots.
-- Use simple lowercase names such as `home.png` and `detail.png`.
-- Avoid spaces in filenames.
-- Keep the images inside the repository so GitHub can load them with relative paths.
-- Four screenshots are enough for this project: Home, Search, Detail, and Favorites.
-
 ## Notes
 
 Some behavior depends on the TVmaze API:
@@ -422,5 +350,6 @@ Some behavior depends on the TVmaze API:
 - Home supports remote pagination through the show index endpoint.
 - Search is intentionally capped at 10 results because the search endpoint does not provide normal pagination.
 - Favorites are owned locally by the app, while their TV show metadata can still be refreshed from TVmaze.
+- Navigation also supports `movieapp://` custom deep links for Home, Search, Favorites, and Detail.
 
 These API limitations are handled explicitly instead of pretending that unsupported server behavior exists.
