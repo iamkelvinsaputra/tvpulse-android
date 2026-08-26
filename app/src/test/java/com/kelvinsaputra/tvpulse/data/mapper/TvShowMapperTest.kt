@@ -18,6 +18,8 @@ class TvShowMapperTest {
             language = "English",
             genres = listOf("Drama", "Comedy"),
             premiered = "2026-05-01",
+            runtime = 60,
+            status = "Running",
             schedule = ScheduleDto(time = "21:00", days = listOf("Friday")),
             rating = RatingDto(average = 8.4),
             network = NetworkDto("TV Network"),
@@ -33,5 +35,7 @@ class TvShowMapperTest {
         assertEquals("Friday · 21:00", result.schedule)
         assertEquals("TV Network", result.network)
         assertEquals(8.4, result.rating)
+        assertEquals(60, result.runtime)
+        assertEquals("Running", result.status)
     }
 }

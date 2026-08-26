@@ -12,7 +12,6 @@ import com.kelvinsaputra.tvpulse.ui.detail.DetailRoute
 import com.kelvinsaputra.tvpulse.ui.detail.DetailViewModel
 import com.kelvinsaputra.tvpulse.ui.favorites.FavoritesRoute
 import com.kelvinsaputra.tvpulse.ui.home.HomeRoute
-import com.kelvinsaputra.tvpulse.ui.search.SearchRoute
 
 @Composable
 fun TvPulseApp(
@@ -52,15 +51,7 @@ fun TvPulseApp(
         entryProvider = entryProvider {
             entry<HomeDestination> {
                 HomeRoute(
-                    onSearchClick = { backStack.add(SearchDestination) },
                     onFavoritesClick = { backStack.add(FavoritesDestination) },
-                    onShowClick = ::navigateToDetail,
-                )
-            }
-
-            entry<SearchDestination> {
-                SearchRoute(
-                    onBack = ::navigateBack,
                     onShowClick = ::navigateToDetail,
                 )
             }
@@ -68,6 +59,7 @@ fun TvPulseApp(
             entry<FavoritesDestination> {
                 FavoritesRoute(
                     onBack = ::navigateBack,
+                    onHomeClick = ::navigateBack,
                     onShowClick = ::navigateToDetail,
                 )
             }

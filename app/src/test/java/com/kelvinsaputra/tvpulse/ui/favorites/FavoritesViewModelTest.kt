@@ -1,6 +1,7 @@
 package com.kelvinsaputra.tvpulse.ui.favorites
 
 import com.kelvinsaputra.tvpulse.domain.usecase.ObserveFavoritesUseCase
+import com.kelvinsaputra.tvpulse.domain.usecase.SetFavoriteUseCase
 import com.kelvinsaputra.tvpulse.testutil.FakeTvShowRepository
 import com.kelvinsaputra.tvpulse.testutil.MainDispatcherRule
 import com.kelvinsaputra.tvpulse.testutil.sampleShow
@@ -24,7 +25,10 @@ class FavoritesViewModelTest {
     @Test
     fun `favorites react to repository flow updates`() = runTest {
         val repository = FakeTvShowRepository()
-        val viewModel = FavoritesViewModel(ObserveFavoritesUseCase(repository))
+        val viewModel = FavoritesViewModel(
+            ObserveFavoritesUseCase(repository),
+            SetFavoriteUseCase(repository),
+        )
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect()
         }

@@ -29,8 +29,9 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun loadShows() {
+        _uiState.value = HomeUiState.Loading
+
         viewModelScope.launch {
-            _uiState.value = HomeUiState.Loading
             try {
                 val shows = getTopShowsUseCase()
                 _uiState.value = if (shows.isEmpty()) {

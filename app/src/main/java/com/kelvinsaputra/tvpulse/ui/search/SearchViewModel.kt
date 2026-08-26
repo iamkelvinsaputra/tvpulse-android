@@ -36,12 +36,12 @@ class SearchViewModel @Inject constructor(
     private val normalizedQuery = _query
         .map { it.trim() }
         .distinctUntilChanged()
+        .debounce { query -> if (query.isBlank()) 0L else SEARCH_DEBOUNCE_MS }
 
     val uiState: StateFlow<SearchUiState> = combine(
         normalizedQuery,
         retryToken,
     ) { query, token -> query to token }
-        .debounce { (query, _) -> if (query.isBlank()) 0L else SEARCH_DEBOUNCE_MS }
         .flatMapLatest { (query, _) ->
             if (query.isBlank()) {
                 flow { emit(SearchUiState.Empty()) }

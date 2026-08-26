@@ -55,7 +55,7 @@ private fun Intent.toDetailShowIdOrNull(): Long? {
     if (action != Intent.ACTION_VIEW) return null
 
     val uri = data ?: return null
-    if (uri.scheme != "movieapp" || uri.host != "detail") return null
+    if (uri.scheme != "tvpulse-kelvin" || uri.host != "detail") return null
 
     return uri.pathSegments
         .singleOrNull()

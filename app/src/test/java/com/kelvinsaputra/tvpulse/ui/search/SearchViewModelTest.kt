@@ -54,6 +54,33 @@ class SearchViewModelTest {
     }
 
     @Test
+    fun `retry bypasses debounce and immediately refetches`() = runTest {
+        var callCount = 0
+        val repository = FakeTvShowRepository().apply {
+            search = {
+                callCount += 1
+                if (callCount == 1) {
+                    throw IllegalStateException("boom")
+                }
+                delay(1_000)
+                listOf(sampleShow())
+            }
+        }
+        val viewModel = SearchViewModel(SearchShowsUseCase(repository))
+
+        viewModel.onQueryChange("broken")
+        advanceTimeBy(350)
+        runCurrent()
+        assertTrue(viewModel.uiState.value is SearchUiState.Error)
+
+        viewModel.retry()
+        runCurrent()
+
+        assertEquals(2, callCount)
+        assertTrue(viewModel.uiState.value is SearchUiState.Loading)
+    }
+
+    @Test
     fun `new query cancels stale search`() = runTest {
         val completed = mutableListOf<String>()
         val repository = FakeTvShowRepository().apply {

@@ -4,15 +4,12 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 @Serializable
-data object HomeDestination: NavKey
+data object HomeDestination : NavKey
 
 @Serializable
-data object SearchDestination: NavKey
-
-@Serializable
-data object FavoritesDestination: NavKey
+data object FavoritesDestination : NavKey
 
 @Serializable
 data class DetailDestination(
-    val showId: Long
-): NavKey
+    val showId: Long,
+) : NavKey

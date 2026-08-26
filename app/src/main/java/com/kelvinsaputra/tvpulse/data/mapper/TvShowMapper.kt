@@ -24,6 +24,8 @@ fun TvShowDto.toDomain(): TvShow = TvShow(
     network = network?.name ?: webChannel?.name,
     premiered = premiered,
     language = language,
+    runtime = runtime ?: averageRuntime,
+    status = status,
 )
 
 fun TvShow.toFavoriteEntity(): FavoriteShowEntity = FavoriteShowEntity(

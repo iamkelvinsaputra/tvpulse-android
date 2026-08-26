@@ -28,7 +28,11 @@ class DetailViewModel @AssistedInject constructor(
     private val _uiState = MutableStateFlow<DetailUiState>(DetailUiState.Loading)
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
 
+    private val _actionError = MutableStateFlow<String?>(null)
+    val actionError: StateFlow<String?> = _actionError.asStateFlow()
+
     private var latestFavoriteState = false
+    private var failedFavoriteTarget: Boolean? = null
 
     init {
         observeFavoriteState()
@@ -41,15 +45,34 @@ class DetailViewModel @AssistedInject constructor(
 
     fun toggleFavorite() {
         val state = _uiState.value as? DetailUiState.Success ?: return
+        updateFavorite(isFavorite = !state.isFavorite)
+    }
+
+    fun retryFavoriteUpdate() {
+        val target = failedFavoriteTarget ?: return
+        updateFavorite(isFavorite = target)
+    }
+
+    fun dismissActionError() {
+        failedFavoriteTarget = null
+        _actionError.value = null
+    }
+
+    private fun updateFavorite(isFavorite: Boolean) {
+        val state = _uiState.value as? DetailUiState.Success ?: return
         if (state.isFavoriteUpdating) return
 
+        _actionError.value = null
+        failedFavoriteTarget = null
+        _uiState.value = state.copy(isFavoriteUpdating = true)
+
         viewModelScope.launch {
-            _uiState.value = state.copy(isFavoriteUpdating = true)
             try {
                 setFavoriteUseCase(
                     show = state.show,
-                    isFavorite = !state.isFavorite,
+                    isFavorite = isFavorite,
                 )
+
                 val current = _uiState.value as? DetailUiState.Success
                 if (current != null) {
                     _uiState.value = current.copy(isFavoriteUpdating = false)
@@ -57,7 +80,11 @@ class DetailViewModel @AssistedInject constructor(
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
-                _uiState.value = DetailUiState.Error(exception.toUserMessage())
+                failedFavoriteTarget = isFavorite
+
+                val current = _uiState.value as? DetailUiState.Success ?: state
+                _uiState.value = current.copy(isFavoriteUpdating = false)
+                _actionError.value = exception.toUserMessage()
             }
         }
     }
@@ -78,8 +105,9 @@ class DetailViewModel @AssistedInject constructor(
     }
 
     private fun loadDetail() {
+        _uiState.value = DetailUiState.Loading
+
         viewModelScope.launch {
-            _uiState.value = DetailUiState.Loading
             try {
                 val show = getShowDetailUseCase(destination.showId)
                 _uiState.value = DetailUiState.Success(
