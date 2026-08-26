@@ -6,6 +6,10 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
@@ -23,12 +27,48 @@ fun TvPulseApp(
     onExit: () -> Unit,
 ) {
     val backStack = rememberNavBackStack(HomeDestination)
+    var pendingHomeDeepLink by remember {
+        mutableStateOf<HomeDeepLinkRequest?>(null)
+    }
+
+    fun resetToHome() {
+        while (backStack.size > 1) {
+            backStack.removeLastOrNull()
+        }
+    }
 
     LaunchedEffect(deepLinkEvent?.sequence) {
         deepLinkEvent?.let { event ->
-            val destination = DetailDestination(event.showId)
-            if (backStack.lastOrNull() != destination) {
-                backStack.add(destination)
+            when (val target = event.target) {
+                DeepLinkTarget.Home -> {
+                    resetToHome()
+                    pendingHomeDeepLink = HomeDeepLinkRequest(
+                        query = "",
+                        focusSearch = false,
+                        sequence = event.sequence,
+                    )
+                }
+
+                is DeepLinkTarget.Search -> {
+                    resetToHome()
+                    pendingHomeDeepLink = HomeDeepLinkRequest(
+                        query = target.query.orEmpty(),
+                        focusSearch = true,
+                        sequence = event.sequence,
+                    )
+                }
+
+                DeepLinkTarget.Favorites -> {
+                    pendingHomeDeepLink = null
+                    resetToHome()
+                    backStack.add(FavoritesDestination)
+                }
+
+                is DeepLinkTarget.Detail -> {
+                    pendingHomeDeepLink = null
+                    resetToHome()
+                    backStack.add(DetailDestination(target.showId))
+                }
             }
         }
     }
@@ -84,6 +124,10 @@ fun TvPulseApp(
                 HomeRoute(
                     onFavoritesClick = { backStack.add(FavoritesDestination) },
                     onShowClick = ::navigateToDetail,
+                    deepLinkRequest = pendingHomeDeepLink,
+                    onDeepLinkConsumed = {
+                        pendingHomeDeepLink = null
+                    },
                 )
             }
 

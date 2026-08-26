@@ -36,6 +36,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -51,6 +54,7 @@ import com.kelvinsaputra.tvpulse.ui.components.TvPulseMainHeader
 import com.kelvinsaputra.tvpulse.ui.components.TvPulseTab
 import com.kelvinsaputra.tvpulse.ui.components.UiError
 import com.kelvinsaputra.tvpulse.ui.components.asMessage
+import com.kelvinsaputra.tvpulse.ui.navigation.HomeDeepLinkRequest
 import com.kelvinsaputra.tvpulse.ui.search.SearchUiState
 import com.kelvinsaputra.tvpulse.ui.search.SearchViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -59,12 +63,25 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 fun HomeRoute(
     onShowClick: (Long) -> Unit,
     onFavoritesClick: () -> Unit,
+    deepLinkRequest: HomeDeepLinkRequest? = null,
+    onDeepLinkConsumed: () -> Unit = {},
     homeViewModel: HomeViewModel = hiltViewModel(),
     searchViewModel: SearchViewModel = hiltViewModel(),
 ) {
     val homeUiState by homeViewModel.uiState.collectAsStateWithLifecycle()
     val query by searchViewModel.query.collectAsStateWithLifecycle()
     val searchUiState by searchViewModel.uiState.collectAsStateWithLifecycle()
+    var searchFocusRequest by remember { mutableStateOf<Long?>(null) }
+
+    LaunchedEffect(deepLinkRequest?.sequence) {
+        deepLinkRequest?.let { request ->
+            searchViewModel.onQueryChange(request.query)
+            if (request.focusSearch) {
+                searchFocusRequest = request.sequence
+            }
+            onDeepLinkConsumed()
+        }
+    }
 
     HomeScreen(
         homeUiState = homeUiState,
@@ -76,6 +93,7 @@ fun HomeRoute(
         onHomeRetry = homeViewModel::retry,
         onHomeLoadMore = homeViewModel::loadMore,
         onSearchRetry = searchViewModel::retry,
+        searchFocusRequest = searchFocusRequest,
     )
 }
 
@@ -90,8 +108,18 @@ fun HomeScreen(
     onHomeRetry: () -> Unit,
     onHomeLoadMore: () -> Unit,
     onSearchRetry: () -> Unit,
+    searchFocusRequest: Long? = null,
 ) {
     val normalizedQuery = query.trim()
+    val searchFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(searchFocusRequest) {
+        if (searchFocusRequest != null) {
+            searchFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
     val activeError = if (normalizedQuery.isBlank()) {
         homeUiState.blockingError
     } else {
@@ -127,7 +155,8 @@ fun HomeScreen(
                 onValueChange = onQueryChange,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp),
+                    .padding(top = 10.dp)
+                    .focusRequester(searchFocusRequester),
                 placeholder = {
                     Text(stringResource(R.string.search_placeholder))
                 },
