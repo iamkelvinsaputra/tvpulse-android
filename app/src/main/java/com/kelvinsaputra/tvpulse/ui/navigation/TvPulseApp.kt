@@ -1,6 +1,7 @@
 package com.kelvinsaputra.tvpulse.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
@@ -14,10 +15,32 @@ import com.kelvinsaputra.tvpulse.ui.home.HomeRoute
 import com.kelvinsaputra.tvpulse.ui.search.SearchRoute
 
 @Composable
-fun TvPulseApp(onExit: () -> Unit) {
+fun TvPulseApp(
+    deepLinkEvent: DeepLinkEvent?,
+    onExit: () -> Unit,
+) {
     val backStack = rememberNavBackStack(HomeDestination)
-    fun navigateBack() { if (backStack.size > 1) backStack.removeLastOrNull() else onExit() }
-    fun navigateToDetail(showId: Long) { backStack.add(DetailDestination(showId)) }
+
+    LaunchedEffect(deepLinkEvent?.sequence) {
+        deepLinkEvent?.let { event ->
+            val destination = DetailDestination(event.showId)
+            if (backStack.lastOrNull() != destination) {
+                backStack.add(destination)
+            }
+        }
+    }
+
+    fun navigateToDetail(showId: Long) {
+        backStack.add(DetailDestination(showId))
+    }
+
+    fun navigateBack() {
+        if (backStack.size > 1) {
+            backStack.removeLastOrNull()
+        } else {
+            onExit()
+        }
+    }
 
     NavDisplay(
         backStack = backStack,
@@ -34,13 +57,29 @@ fun TvPulseApp(onExit: () -> Unit) {
                     onShowClick = ::navigateToDetail,
                 )
             }
-            entry<SearchDestination> { SearchRoute(onBack = ::navigateBack, onShowClick = ::navigateToDetail) }
-            entry<FavoritesDestination> { FavoritesRoute(onBack = ::navigateBack, onShowClick = ::navigateToDetail) }
+
+            entry<SearchDestination> {
+                SearchRoute(
+                    onBack = ::navigateBack,
+                    onShowClick = ::navigateToDetail,
+                )
+            }
+
+            entry<FavoritesDestination> {
+                FavoritesRoute(
+                    onBack = ::navigateBack,
+                    onShowClick = ::navigateToDetail,
+                )
+            }
+
             entry<DetailDestination> { destination ->
                 val viewModel = hiltViewModel<DetailViewModel, DetailViewModel.Factory>(
                     creationCallback = { factory -> factory.create(destination) },
                 )
-                DetailRoute(viewModel = viewModel, onBack = ::navigateBack)
+                DetailRoute(
+                    viewModel = viewModel,
+                    onBack = ::navigateBack,
+                )
             }
         },
     )
