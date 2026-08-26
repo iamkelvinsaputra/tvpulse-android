@@ -3,6 +3,8 @@ package com.kelvinsaputra.tvpulse.ui.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kelvinsaputra.tvpulse.domain.usecase.GetShowDetailUseCase
+import com.kelvinsaputra.tvpulse.domain.usecase.ObserveIsFavoriteUseCase
+import com.kelvinsaputra.tvpulse.domain.usecase.SetFavoriteUseCase
 import com.kelvinsaputra.tvpulse.ui.components.toUserMessage
 import com.kelvinsaputra.tvpulse.ui.navigation.DetailDestination
 import dagger.assisted.Assisted
@@ -19,20 +21,71 @@ import kotlinx.coroutines.launch
 class DetailViewModel @AssistedInject constructor(
     @Assisted private val destination: DetailDestination,
     private val getShowDetailUseCase: GetShowDetailUseCase,
+    private val observeIsFavoriteUseCase: ObserveIsFavoriteUseCase,
+    private val setFavoriteUseCase: SetFavoriteUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<DetailUiState>(DetailUiState.Loading)
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
 
-    init { loadDetail() }
+    private var latestFavoriteState = false
 
-    fun retry() { loadDetail() }
+    init {
+        observeFavoriteState()
+        loadDetail()
+    }
+
+    fun retry() {
+        loadDetail()
+    }
+
+    fun toggleFavorite() {
+        val state = _uiState.value as? DetailUiState.Success ?: return
+        if (state.isFavoriteUpdating) return
+
+        viewModelScope.launch {
+            _uiState.value = state.copy(isFavoriteUpdating = true)
+            try {
+                setFavoriteUseCase(
+                    show = state.show,
+                    isFavorite = !state.isFavorite,
+                )
+                val current = _uiState.value as? DetailUiState.Success
+                if (current != null) {
+                    _uiState.value = current.copy(isFavoriteUpdating = false)
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                _uiState.value = DetailUiState.Error(exception.toUserMessage())
+            }
+        }
+    }
+
+    private fun observeFavoriteState() {
+        viewModelScope.launch {
+            observeIsFavoriteUseCase(destination.showId).collect { isFavorite ->
+                latestFavoriteState = isFavorite
+                val current = _uiState.value as? DetailUiState.Success
+                if (current != null) {
+                    _uiState.value = current.copy(
+                        isFavorite = isFavorite,
+                        isFavoriteUpdating = false,
+                    )
+                }
+            }
+        }
+    }
 
     private fun loadDetail() {
         viewModelScope.launch {
             _uiState.value = DetailUiState.Loading
             try {
-                _uiState.value = DetailUiState.Success(getShowDetailUseCase(destination.showId))
+                val show = getShowDetailUseCase(destination.showId)
+                _uiState.value = DetailUiState.Success(
+                    show = show,
+                    isFavorite = latestFavoriteState,
+                )
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {

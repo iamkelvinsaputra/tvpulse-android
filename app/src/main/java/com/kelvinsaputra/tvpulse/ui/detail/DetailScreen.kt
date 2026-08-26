@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,30 +35,69 @@ import com.kelvinsaputra.tvpulse.ui.components.ScreenHeader
 import com.kelvinsaputra.tvpulse.ui.components.ShowListShimmer
 
 @Composable
-fun DetailRoute(viewModel: DetailViewModel, onBack: () -> Unit) {
+fun DetailRoute(
+    viewModel: DetailViewModel,
+    onBack: () -> Unit,
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    DetailScreen(uiState = uiState, onBack = onBack, onRetry = viewModel::retry)
+
+    DetailScreen(
+        uiState = uiState,
+        onBack = onBack,
+        onRetry = viewModel::retry,
+        onToggleFavorite = viewModel::toggleFavorite,
+    )
 }
 
 @Composable
-fun DetailScreen(uiState: DetailUiState, onBack: () -> Unit, onRetry: () -> Unit) {
-    var showErrorDialog by remember(uiState) { mutableStateOf(uiState is DetailUiState.Error) }
+fun DetailScreen(
+    uiState: DetailUiState,
+    onBack: () -> Unit,
+    onRetry: () -> Unit,
+    onToggleFavorite: () -> Unit,
+) {
+    var showErrorDialog by remember(uiState) {
+        mutableStateOf(uiState is DetailUiState.Error)
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
-        ScreenHeader(title = "Show detail", onBack = onBack)
+        ScreenHeader(
+            title = "Show detail",
+            onBack = onBack,
+            actions = {
+                if (uiState is DetailUiState.Success) {
+                    TextButton(
+                        onClick = onToggleFavorite,
+                        enabled = !uiState.isFavoriteUpdating,
+                    ) {
+                        Text(if (uiState.isFavorite) "♥ Saved" else "♡ Favorite")
+                    }
+                }
+            },
+        )
+
         when (uiState) {
             DetailUiState.Loading -> ShowListShimmer(modifier = Modifier.fillMaxSize())
+
             is DetailUiState.Error -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Button(onClick = onRetry) { Text("Try again") }
                 }
                 if (showErrorDialog) {
                     ErrorDialog(
                         message = uiState.message,
-                        onRetry = { showErrorDialog = false; onRetry() },
+                        onRetry = {
+                            showErrorDialog = false
+                            onRetry()
+                        },
                         onDismiss = { showErrorDialog = false },
                     )
                 }
             }
+
             is DetailUiState.Success -> DetailContent(uiState.show)
         }
     }
@@ -66,7 +106,10 @@ fun DetailScreen(uiState: DetailUiState, onBack: () -> Unit, onRetry: () -> Unit
 @Composable
 private fun DetailContent(show: TvShow) {
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         show.imageUrl?.let { imageUrl ->
@@ -74,21 +117,36 @@ private fun DetailContent(show: TvShow) {
                 model = imageUrl,
                 contentDescription = "${show.name} poster",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(2f / 3f),
             )
         }
-        Text(show.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+
+        Text(
+            text = show.name,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+        )
+
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             show.rating?.let { Text("★ %.1f".format(it)) }
             show.premiered?.let { Text(it.take(4)) }
             show.language?.let { Text(it) }
         }
-        if (show.genres.isNotEmpty()) Text(show.genres.joinToString(" · "))
+
+        if (show.genres.isNotEmpty()) {
+            Text(show.genres.joinToString(" · "))
+        }
         show.schedule?.let { Metadata("Schedule", it) }
         show.network?.let { Metadata("Network", it) }
+
         show.summaryHtml?.let { summary ->
             Spacer(Modifier.height(4.dp))
-            Text(Html.fromHtml(summary, Html.FROM_HTML_MODE_LEGACY).toString(), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = Html.fromHtml(summary, Html.FROM_HTML_MODE_LEGACY).toString(),
+                style = MaterialTheme.typography.bodyLarge,
+            )
         }
     }
 }
@@ -96,7 +154,11 @@ private fun DetailContent(show: TvShow) {
 @Composable
 private fun Metadata(label: String, value: String) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Text(value)
     }
 }
